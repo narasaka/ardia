@@ -20,7 +20,8 @@ const { useBrowser } = await import("../store/browser.ts");
 const cli = await import("./cliControl.ts");
 const settle = () => new Promise((r) => setImmediate(r));
 const setOn = (on) => useBrowser.getState().updateSettings({ cliControl: on });
-const emit = (status) => globalThis.acTestCliEvents.forEach((l) => l(status));
+const { engineEvent } = await import("../test-native/index.ts");
+const emit = (status) => engineEvent("cliControl", status);
 
 cli.startCliControl();
 await settle();

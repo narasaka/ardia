@@ -6,7 +6,7 @@ const dm = await import("./dockMotion.ts");
 const { toolbarGeometry } = await import("./geometry.ts");
 const { useBrowser } = await import("../../store/browser.ts");
 const { flushPersistence, loadSession, startPersistence } = await import("../../lib/persist.ts");
-const stub = await import("../../test-native-stub.mjs");
+const stub = await import("../../test-native/index.ts");
 
 const S = () => useBrowser.getState();
 
@@ -238,4 +238,31 @@ test("Arc's layout keeps the address bar in a hidden sidebar (no toolbar on the 
   assert.equal(addressBarInSidebar(S(), w), true, "switch off, shown: in the sidebar");
   stub.docs.clear();
   reloadSwitches();
+});
+
+test("Arc's layout, with no toolbar to grab, frames the card in Arc's 10 pt on every side; Dia's is Dia's 6 on every side", async () => {
+  const { cardInset } = await import("./windowLayout.ts");
+  assert.deepEqual(cardInset(true), { top: 10, right: 10, bottom: 10, left: 10 });
+  assert.deepEqual(cardInset(false), { top: 6, right: 6, bottom: 6, left: 6 });
+});
+
+test("the peek panel still covers the card's rounded corners in Arc's wider frame", async () => {
+  const { cardInset } = await import("./windowLayout.ts");
+  const { layout } = await import("../../lib/theme.ts");
+  const inset = cardInset(true);
+  const [px, py] = dm.PEEK_ORIGIN;
+  const height = 860;
+  const r = layout.cardRadius;
+  const R = dm.PEEK_RADIUS;
+  const panelCentre = [px + R, py + R];
+  for (const [cx, cy] of [[inset.left + r, inset.top + r], [inset.left + r, height - inset.bottom - r]]) {
+    const y = cy < height / 2 ? panelCentre[1] : height - dm.PEEK_BOTTOM - R;
+    for (let a = 0; a <= 90; a += 5) {
+      const t = (a * Math.PI) / 180;
+      const x = cx - r * Math.cos(t);
+      const yy = cy < height / 2 ? cy - r * Math.sin(t) : cy + r * Math.sin(t);
+      const insideBand = x >= panelCentre[0] || (cy < height / 2 ? yy >= y : yy <= y);
+      assert.ok(insideBand || Math.hypot(x - panelCentre[0], yy - y) <= R - 0.5, `the card's corner at ${a}° stays inside the panel's`);
+    }
+  }
 });

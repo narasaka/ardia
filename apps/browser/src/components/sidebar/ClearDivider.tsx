@@ -41,10 +41,13 @@ export const ClearDivider = memo(function ClearDivider({ windowId, profileId, sp
   return (
     <View style={{ height: CLEAR_DIVIDER_HEIGHT, marginTop: spaced ? 7 : 0, flexDirection: "row", alignItems: "center", paddingLeft: PADDING, paddingRight: PADDING }}>
       <View style={{ flex: 1, height: 1, backgroundColor: theme.divider }} />
-      <View style={[{ flexDirection: "row", alignItems: "center" }, shown ? null : { position: "absolute", right: PADDING, opacity: 0 }]}>
-        {tidy ? <DividerButton title="Tidy" symbol="sparkles" iconWidth={10} label="Tidy pinned tabs" onPress={() => tidyPins(windowId, profileId)} /> : null}
-        {tidy && clear ? <View style={{ width: 1, height: 9, marginLeft: 8, backgroundColor: theme.divider }} /> : null}
-        {clear ? <DividerButton title="Clear" symbol="arrow.down" iconWidth={8} label="Clear unpinned tabs" onPress={() => closeAllTabs(windowId)} /> : null}
+      <View>
+        <View style={{ position: "absolute", left: 0, right: 0, top: (CLEAR_DIVIDER_HEIGHT - 1) / 2, height: 1, backgroundColor: theme.divider, opacity: shown ? 0 : 1 }} />
+        <View style={{ flexDirection: "row", alignItems: "center", opacity: shown ? 1 : 0 }}>
+          {tidy ? <DividerButton title="Tidy" symbol="sparkles" iconWidth={10} label="Tidy pinned tabs" onPress={() => tidyPins(windowId, profileId)} /> : null}
+          {tidy && clear ? <View style={{ width: 1, height: 9, marginLeft: 8, backgroundColor: theme.divider }} /> : null}
+          {clear ? <DividerButton title="Clear" symbol="arrow.down" iconWidth={8} label="Clear unpinned tabs" onPress={() => closeAllTabs(windowId)} /> : null}
+        </View>
       </View>
     </View>
   );

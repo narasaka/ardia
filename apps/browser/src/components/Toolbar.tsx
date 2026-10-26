@@ -25,6 +25,7 @@ import { ToolbarExtensions, useToolbarExtensionsWidth } from "./extensions/Toolb
 import { FIELD_GLASS_HOVER_OPACITY, FIELD_GLASS_OPACITY, GlassFill, liquidGlass } from "./glass";
 import { TranslateButton } from "./site/TranslateControls";
 import { ZoomIndicator } from "./site/ZoomControls";
+import { useShortcutHint, withShortcut } from "../lib/commandShortcuts";
 
 type ToolbarTab = Pick<Tab, "id" | "url" | "title" | "windowId" | "zoom">;
 const toolbarTab = (t: Tab | undefined): ToolbarTab | undefined =>
@@ -56,6 +57,7 @@ export function Toolbar({
   bare?: boolean;
 }) {
   const theme = useTheme();
+  const sidebarHint = useShortcutHint("toggleSidebar");
   const tab = useToolbarTab(tabId);
   const isLoading = useTabLive(tabId, (l) => l.isLoading);
   const themeColor = useTabLive(tabId, (l) => l.themeColor);
@@ -98,7 +100,7 @@ export function Toolbar({
             icon="sidebar.left"
             size={GLYPH}
             onPress={() => useBrowser.getState().toggleSidebar(windowId)}
-            tooltip="Auto-Hide Tabs (⌘S)"
+            tooltip={withShortcut("Auto-Hide Tabs", sidebarHint)}
           />
         )}
         <HistoryButton style={at.back} tabId={tab.id} windowId={tab.windowId} direction={-1} disabled={!history.back} palette={palette} onFocus={focus} />
@@ -153,6 +155,7 @@ export const ReloadButton = memo(function ReloadButton({
   onFocus: () => void;
 }) {
   const web = () => webviews.get(tab.id);
+  const reloadHint = useShortcutHint("reload");
   return (
     <ToolbarButton
       style={style}
@@ -167,7 +170,7 @@ export const ReloadButton = memo(function ReloadButton({
         if (m.metaKey) return void useBrowser.getState().newTab(tab.windowId, { url: tab.url, background: true, openerId: tab.id });
         void withLivePage(tab.id, (page) => (m.shiftKey ? page.forceReload() : page.reload()));
       }}
-      tooltip={loading ? "Stop Loading This Page" : "Refresh (⌘R)"}
+      tooltip={loading ? "Stop Loading This Page" : withShortcut("Refresh", reloadHint)}
     />
   );
 });
@@ -219,6 +222,7 @@ export const HistoryButton = memo(function HistoryButton({
   hit?: ButtonHit;
   onFocus: () => void;
 }) {
+  const historyHint = useShortcutHint(direction < 0 ? "back" : "forward");
   const openMenu = () => {
     onFocus();
     const open = useHistoryMenu.getState().menu;
@@ -244,7 +248,7 @@ export const HistoryButton = memo(function HistoryButton({
         onPress={onPress}
         onLongPress={openMenu}
         onContextMenu={openMenu}
-        tooltip={direction < 0 ? "Go Back (⌘[)" : "Go Forward (⌘])"}
+        tooltip={withShortcut(direction < 0 ? "Go Back" : "Go Forward", historyHint)}
       />
     </MouseArea>
   );
@@ -269,6 +273,8 @@ export const UrlField = memo(function UrlField({
 }) {
   const theme = useTheme();
   const showFullUrl = useSettings((s) => s.showFullUrl);
+  const bookmarkHint = useShortcutHint("bookmarkPage");
+  const splitHint = useShortcutHint("openSplitPane");
   const bookmarked = useIsBookmarked(tab.url);
   const insecure = usePage(tab.id, insecureLevel);
   const popups = usePage(tab.id, (p) => p.popups.length);
@@ -375,7 +381,7 @@ export const UrlField = memo(function UrlField({
         )}
         {hovered && (
           <>
-            <ToolbarButton palette={palette} icon={bookmarked ? "bookmark.fill" : "bookmark"} size={13} box={24} radius={6} onPress={toggleBookmark} tooltip={bookmarked ? "Remove Bookmark" : "Bookmark This Page (⌘D)"} />
+            <ToolbarButton palette={palette} icon={bookmarked ? "bookmark.fill" : "bookmark"} size={13} box={24} radius={6} onPress={toggleBookmark} tooltip={bookmarked ? "Remove Bookmark" : withShortcut("Bookmark This Page", bookmarkHint)} />
             {!inSplit && !sidebar && (
               <ToolbarButton
                 palette={palette}
@@ -384,7 +390,7 @@ export const UrlField = memo(function UrlField({
                 box={24}
                 radius={6}
                 onPress={() => openSplitPane(windowId, { anchorTabId: tab.id })}
-                tooltip="Open Split View (⌃⇧=)"
+                tooltip={withShortcut("Open Split View", splitHint)}
               />
             )}
             <ToolbarButton palette={palette} icon="slider.horizontal.3" size={13} box={24} radius={6} onPress={toggleSiteControls} active={popover === "siteControls"} tooltip="Site Controls" />

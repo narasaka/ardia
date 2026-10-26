@@ -83,7 +83,8 @@ Measured materials (our own non-activating panels over solid backdrops; sRGB; ac
 
 ## Content card
 
-- Frame: x = sidebar width, top 6, right 7, bottom 7. Radius 10.
+- Frame: x = sidebar width, top 6, right 6, bottom 6 (the early 7 on the sides and bottom was never measured; see Hiding
+  and showing the sidebar). Radius 10.
 - Fill: `WindowContent/BaseTint`, #121212 at 60% (dark) or white at 80% (light), over the window
   tint. Samples: `#1B1416` at the top, `#1F1C1D` at the bottom. Web content is opaque and sits
   below the toolbar; the toolbar itself is translucent card.
@@ -242,7 +243,9 @@ Regular rows on the 37 pt pitch; the same for "+ New Tab" and ⌘T, and for the 
 - The button is the card toolbar's first one (`sidebar.left`, centre 21 from the card's edge: x 211 with a 190
   sidebar, x 27 hidden). Clicking it hides the sidebar; clicking it again shows it.
 - Hidden: no sidebar and **no traffic lights** (not even with the pointer on the button, where the close button was).
-  The card goes from 6 pt to 6 pt (left and right edges of the page area measured the same way: 6 and 6), top 6; its
+  The card goes from 6 pt to 6 pt (left and right edges of the page area measured the same way: 6 and 6), top 6 (a Dia
+  screenshot of 2026-10-25 at 1x, #347: 6 on all four sides; ours was 7 on the sides and bottom from the first
+  commit, never measured, and is 6 since); its
   toolbar is the shown state's, starting at the card's edge (toggle 27, back 61, forward 97, reload 131, host 160).
 - Motion: the sidebar, its top row with the traffic lights and the card's left edge move together; the card's right
   edge and everything anchored to it (extension buttons, Chat) stay. The page is resized as it goes (a centred
@@ -258,7 +261,8 @@ Arc, not Dia: what our Arc layout (Settings › address bar in the sidebar) does
 screen capture (frames 8–33 ms apart, most 17), so timings are ±1 frame. Edges traced on rows of the page at 2x.
 
 - Hidden: the page card fills the window; no toolbar row, no traffic lights, no back/forward/address. Arc's card inset is
-  10 pt on every side, docked or hidden (ours keeps Dia's 6/7).
+  10 pt on every side, docked or hidden. Ours matches it in Arc's layout (2026-10-25, #347: with no toolbar
+  to grab, Dia's 6 pt left too thin a strip to move the window by); Dia's layout keeps Dia's 6 on every side.
 - Peek (pointer at the window's left edge): a floating panel over the page, which doesn't move. Inset 5 pt from the
   window's left, top and bottom edges (ours keeps Dia's 6/6/7), 227.5 pt wide (= the docked sidebar's width), rounded,
   dark, a 0.5 pt light border; it holds the traffic lights, the sidebar button, back/forward/reload, the URL field and the
@@ -706,8 +710,8 @@ Measured from a read-only `screencapture -l` of Dia's window in the top layout (
 dark, inactive, plum theme, 1512 × 949: two pinned tabs (X, YouTube), "(1) Home / X", and Reddit selected. The
 classes are `TabStrip.TabStripViewController`, `TabStripDockView` (the pinned group) and `TabUI.TabShapeView`
 (`hasInnerCorners`, `cornerRadiusFraction`); the numbers below come from the pixels, not the binary.
-- **Strip and card.** The card starts at y **42**; its left, right and bottom insets are **6** (not the sidebar
-  layout's 7), radius 10. Everything in the strip centres on **y 21**.
+- **Strip and card.** The card starts at y **42**; its left, right and bottom insets are **6**, as in the sidebar
+  layout, radius 10. Everything in the strip centres on **y 21**.
 - **The window buttons move** in this layout: centres (20.75, 20.75), (43.75, 20.75), (66.75, 20.75), 4 pt left of
   and 6 pt above the sidebar layout's (24.75, 26.75).
 - **Pinned group** (`TabStripDockView`): one container at x **86** (12.25 after the zoom button), y 5 … 37 (32 tall),

@@ -204,7 +204,8 @@ two parts with an explicit flush between them gets through; that gap is accepted
 `install.sh [--version V] [--sha256 DIGEST] [--uninstall]` (run with `/bin/sh`; `--help`):
 
 - Downloads `https://github.com/mantrakp04/ardia/releases/download/v<V>/ardia-cli-<V>-macos-arm64.tar.gz` (https only)
-  into a private temp dir. Without `--version` it takes the latest release that has the asset. `--sha256` is the only
+  into a private temp dir; it runs on Apple silicon only and stops with an error anywhere else. Without `--version` it
+  takes the latest release that has the asset. `--sha256` is the only
   digest it trusts (the app passes `Ardia.app/Contents/Resources/ardia-cli.sha256`, which the signed bundle pins), and
   a download needs it: a `.sha256` from the same release would only prove the tarball came from wherever the tarball
   came from. Only a `file://` `ARDIA_CLI_URL` (tests) may go without it, reading `<url>.sha256`. A Debug build has no
@@ -242,8 +243,8 @@ esbuild (the npm `@esbuild/darwin-arm64` tarball, version, sha256 and sha512 pin
 bytecode cache, later ones about 0.15 s.
 
 `scripts/release.sh` builds it into the release's dist dir after the export and writes its digest to
-`Ardia.app/Contents/Resources/ardia-cli.sha256` before the app is signed. `publish-nightly.sh` and the stable
-`gh release create` in the release skill upload the tarball and its `.sha256`.
+`Ardia.app/Contents/Resources/ardia-cli.sha256` before the app is signed. The release skill's `publish.sh` uploads the
+tarball and its `.sha256`.
 
 ## Test
 

@@ -8,6 +8,7 @@ import { closesWindow, engineProfile, isIncognitoProfile, plural, resolveWindowI
 import { leavesEmptyWindow } from "../store/newTabBar";
 import { groupLabel } from "../store/organize";
 import { engineIdOf, sharingProfiles } from "../store/profiles";
+import { closeWindowAnimated } from "./closeAnimated";
 import { applyHeldReports } from "./nativeEvents";
 import { webviews } from "./webviews";
 import { closeWindowDialog } from "./windowClose";
@@ -42,6 +43,9 @@ export async function closeTab(tabId: string) {
     if (!confirmed) return;
     applyHeldReports();
   }
+  const now = store();
+  const closesItsWindow = now.tabs[tabId]?.windowId === w.id && now.peeks[w.id]?.tabId !== tabId && closesWindow(now, tabId) && !leavesEmptyWindow(now, tabId);
+  if (last && closesItsWindow) return closeWindowAnimated(w.id);
   store().closeTab(tabId);
 }
 

@@ -3,6 +3,7 @@ import { useBrowser } from "../store/browser";
 import { inPinnedContainer, plural, profileFor } from "../store/model";
 import { isSmall } from "../store/small";
 import { closeLittleArdia } from "../components/littleArdia/actions";
+import { closeWindowAnimated } from "./closeAnimated";
 
 const MIN_TABS = 2;
 
@@ -26,7 +27,7 @@ async function requestClose(windowId: string) {
     if (suppressed) useBrowser.getState().updateSettings({ warnBeforeClosingWindow: false });
     if (!confirmed) return;
   }
-  if (useBrowser.getState().windows[windowId]) useBrowser.getState().closeWindow(windowId);
+  closeWindowAnimated(windowId);
 }
 
 const closingTabs = (windowId: string) => {
