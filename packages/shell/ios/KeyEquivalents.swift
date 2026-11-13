@@ -69,8 +69,9 @@ enum KeyEquivalents {
     ]
     var lostEvents = 0, misaimedEvents = 0
     var wait = press["wait"] as? Int ?? 250
+    let phase = press["phase"] as? String
     if viaAppKit {
-      NSApp.sendEvent(current)
+      if phase != "up" { NSApp.sendEvent(current) }
       let keyEvent = { (type: NSEvent.EventType, repeated: Bool) in
         SyntheticInput.hardwareKey(type, in: window, keyCode: keyCode, modifiers: mods, isARepeat: repeated)
       }
@@ -106,7 +107,7 @@ enum KeyEquivalents {
           }
         }
       } else {
-        dispatch(keyEvent(.keyUp, false))
+        if phase != "down" { dispatch(keyEvent(.keyUp, false)) }
         releaseModifiers()
       }
       if let again = press["again"] as? Int, repeats == 0 {
@@ -213,7 +214,7 @@ enum KeyEquivalents {
         guard let (item, parent) = menuItem(for: event) else { return false }
         parent.update()
         matched.append(describe(item).merging(["enabled": item.isEnabled]) { a, _ in a })
-        guard item.isEnabled else { return true }
+        guard item.isEnabled else { return false }
         parent.performActionForItem(at: parent.index(of: item))
         return true
       }

@@ -35,6 +35,7 @@ namespace ardia_window {
 
 NSMapTable<NSWindow *, ArdiaWindowController *> *Controllers();
 extern BOOL (^gRefusesUnhandledKey)(NSWindow *, NSEvent *);
+extern BOOL (^gYieldsReservedKey)(NSMenuItem *);
 
 void ConfigureWindow(NSWindow *window);
 CGFloat WindowCornerRadius(NSWindow *window);

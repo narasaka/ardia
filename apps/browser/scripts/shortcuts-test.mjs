@@ -642,7 +642,7 @@ const w1Native = await ac(`const f = ac.store.getState().windows.w1.frame;
 const w1Dev = (action) => ac(`return ac.engine.call("windows.dev", { window: ${JSON.stringify(w1Native)}, action: ${JSON.stringify(action)} });`);
 const reservedBy = async ({ key, keyCode, modifiers }) =>
   w1Dev(`reserved:${modifiers.reduce((f, m) => f | FLAGS[m], 0)}:${key}:${keyCode}`);
-const swallowKeys = () => cdp("?t3", "(window.keys = [], window.swallowing ??= (addEventListener('keydown', (e) => { window.keys.push(e.key); e.preventDefault(); }, true), true), true)");
+const swallowKeys = () => cdp("?t3", "(window.keys = [], window.ups = [], window.swallowing ??= (addEventListener('keydown', (e) => { window.keys.push(e.key); e.preventDefault(); }, true), addEventListener('keyup', (e) => { if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) window.ups.push(e.key); }, true), true), true)");
 const pageKeys = async () => (await cdp("?t3", "window.keys?.length ?? -1")) ?? -1;
 {
   const wrong = [];
@@ -739,9 +739,9 @@ await sleep(1000);
     const wkFocus = async (inField, swallow) => {
       await ac(`ac.store.getState().activate(globalThis.wkTab); ac.webviews.get(globalThis.wkTab).focus(); return 1;`);
       await sleep(150);
-      const ready = await wkPage(`(${root}.seen = "0", ${root}.ups = "0", ${root}.swallow = ${swallow ? '"1"' : '"0"'},
-        window.counting ??= (addEventListener("keydown", (e) => { ${root}.seen = String(+${root}.seen + 1); if (${root}.swallow === "1") e.preventDefault(); }, true),
-          addEventListener("keyup", (e) => { if (!["Control", "Shift", "Alt", "Meta"].includes(e.key)) ${root}.ups = String(+${root}.ups + 1); }, true), true),
+      const ready = await wkPage(`(${root}.seen = "0", ${root}.ups = "0", ${root}.log = "", ${root}.swallow = ${swallow ? '"1"' : '"0"'},
+        window.counting ??= (addEventListener("keydown", (e) => { ${root}.seen = String(+${root}.seen + 1); ${root}.log += "d:" + e.key + "|"; if (${root}.swallow === "1") e.preventDefault(); }, true),
+          addEventListener("keyup", (e) => { if (!["Control", "Shift", "Alt", "Meta"].includes(e.key)) { ${root}.ups = String(+${root}.ups + 1); ${root}.log += "u:" + e.key + "|"; } }, true), true),
         ${inField ? `document.getElementById("f").focus()` : "document.activeElement.blur()"}, window.counting === true && ${root}.seen === "0")`);
       return ready === true;
     };
@@ -796,15 +796,16 @@ await sleep(1000);
       const harness = notKey(r);
       const arg = backward ? "backward" : "forward";
       const fired = (r.fired ?? []).filter((f) => f.command === "tabSwitcher" && f.arg === arg).length;
-      const pageClean = !pageCounts || (counts !== null && counts.down === 0 && (counts.up ?? 0) === 0);
+      const pageClean = !pageCounts || (counts !== null && counts.down === 0 && counts.up === 0);
       check(`${backward ? "⌃⇧Tab" : "⌃Tab"} ${where}, Tab auto-repeating twice, through AppKit: the press and each repeat move the switcher ${arg}, releasing ⌃ opens the tab it shows${pageCounts ? ", and the page never sees it" : ""}`,
         ready && !harness && (!responder || r.firstResponder === responder) && fired === 3 && n > 3 && indices.join() === expected.join() && active === ids[expected[2]] && pageClean,
         `${harness}ready ${ready}, first responder ${r.firstResponder}, tabSwitcher ${arg} fired ${fired}×, switcher indices ${indices.join(" → ") || "none"} of ${n} tabs (expected ${expected.join(" → ")}), active ${active} (expected ${ids[expected[2]]})${pageCounts ? `, ${saw(counts)}` : ""}`);
       await ac(`ac.switcher.cancelSwitcher(); ac.store.getState().closePanel("w1"); return 1;`);
     };
     const chromiumCounts = async () => {
-      const keys = await pageKeys();
-      return keys >= 0 ? { down: keys } : null;
+      const read = await cdp("?t3", "JSON.stringify([window.keys?.length ?? null, window.ups?.length ?? null])");
+      const [down, up] = read ? JSON.parse(read) : [null, null];
+      return Number.isInteger(down) && Number.isInteger(up) ? { down, up } : null;
     };
     const surfaces = [
       { where: "in the sidebar", prepare: () => showPage("t3"), focus: { focus: "window" } },
@@ -867,6 +868,184 @@ await sleep(1000);
         ready && !harness && ids.length > 1 && indices.join() === String(expected) && active === ids[expected] && !open,
         `${harness}listener ${ready}, ${describe(r)}, switcher indices ${indices.join(" → ") || "none"} of ${ids.length} tabs (expected ${expected}), active ${active} (expected ${ids[expected]}), switcher still open ${open}`);
       await ac(`ac.switcher.cancelSwitcher(); return 1;`);
+    }
+
+    const nothingToReopen = () => ac(`ac.store.setState({ closedTabs: [], closedWindows: [], closedGroups: [] }); return 1;`);
+    const tabCount = () => ac(`return ac.store.getState().windows.w1.tabIds.length;`);
+    const whileHeld = async (down, during, up) => {
+      let held = null, between = [], released = null;
+      try {
+        held = await down();
+        between = await during();
+      } finally {
+        released = await up();
+      }
+      return [held, ...between, released];
+    };
+    const chromiumKeys = async () => {
+      const read = await cdp("?t3", "JSON.stringify([window.keys ?? null, window.ups ?? null])");
+      const [downs, ups] = read ? JSON.parse(read) : [null, null];
+      return Array.isArray(downs) && Array.isArray(ups) ? { downs, ups } : null;
+    };
+    {
+      await nothingToReopen();
+      const wrong = [];
+      for (const [where, prepare, readCounts, focus] of [
+        ["a WebKit page's field", () => wkFocus(true, false), wkCounts, {}],
+        ["a WebKit page's field that cancels every keydown", () => wkFocus(true, true), wkCounts, {}],
+        ["a Chromium page that cancels every keydown", async () => (await showPage("t3"), (await swallowKeys()) === true), chromiumCounts, { focus: "page", settle: 300 }],
+      ]) {
+        const ready = await prepare();
+        const before = await tabCount();
+        const r = await press(cmd("T", 17, "shift"), { ...asAppKit, ...focus, wait: 500 });
+        const counts = await readCounts();
+        const after = await tabCount();
+        const harness = notKey(r);
+        if (!ready || harness || (r.fired ?? []).length || after !== before || counts?.down !== 0 || counts?.up !== 0)
+          wrong.push(`${where}: ${harness}ready ${ready}, ${describe(r)}, tabs ${before} → ${after}, ${saw(counts)}`);
+      }
+      check("⇧⌘T with nothing to reopen, through AppKit: the disabled reserved shortcut stops at Ardia, nothing reopens and no page sees its keydown or keyup (WebKit and Chromium)",
+        !wrong.length, wrong.join("; "));
+    }
+    const wkLog = () => wkPage(`${root}.log ?? null`);
+    const shiftCmdT = (phase, extra = {}) => press(cmd("T", 17, "shift"), { ...asAppKit, phase, wait: 200, ...extra });
+    const releaseT = (extra = {}) => press(K("t", 17), { ...asAppKit, phase: "up", wait: 300, ...extra });
+    {
+      await nothingToReopen();
+      const ready = await wkFocus(true, false);
+      const presses = await whileHeld(() => shiftCmdT("down"), async () => [await press(K("x", 7), { ...asAppKit, wait: 200 })], () => releaseT());
+      const log = await wkLog();
+      const harness = notKey(...presses);
+      check("⇧⌘T held in a WebKit page's field while x is typed: the page gets x down and up, and never the T it didn't see go down",
+        ready && !harness && log === "d:x|u:x|", `${harness}listener ${ready}, the page's keys ${JSON.stringify(log)} (expected "d:x|u:x|")`);
+    }
+    {
+      await nothingToReopen();
+      const ready = await wkFocus(true, false);
+      const presses = await whileHeld(() => shiftCmdT("down"), async () => {
+        const ctrlTab = await press(K("\t", 48, "control"), { ...asAppKit, wait: 200 });
+        await ac(`ac.switcher.cancelSwitcher(); return 1;`);
+        return [ctrlTab];
+      }, () => releaseT());
+      const log = await wkLog();
+      const harness = notKey(...presses);
+      check("⇧⌘T held in a WebKit page's field while ⌃Tab is pressed: both are Ardia's, and the page sees neither key go down or up",
+        ready && !harness && (presses[1].fired ?? []).some((f) => f.command === "tabSwitcher") && log === "",
+        `${harness}listener ${ready}, ⌃Tab ${describe(presses[1])}, the page's keys ${JSON.stringify(log)} (expected none)`);
+    }
+    {
+      await nothingToReopen();
+      const ready = await wkFocus(true, false);
+      const [held, plain, releasedFirst] = await whileHeld(() => shiftCmdT("down"), async () => [await press(K("t", 17), { ...asAppKit, wait: 200 })], () => press(K("x", 7), { focus: "window", dry: true, wait: 100 }));
+      const plainLog = await wkLog();
+      let readyAgain = false;
+      const [again, , up] = await whileHeld(() => shiftCmdT("down"), async () => {
+        const away = await press(K("x", 7), { focus: "window", dry: true, wait: 100 });
+        readyAgain = await wkFocus(true, false);
+        return [away];
+      }, () => releaseT());
+      const upLog = await wkLog();
+      const harness = notKey(held, plain, again, up);
+      check("a key Ardia took still reaches the page later: T typed after ⇧⌘T arrives down and up, and T's release after the page lost and regained the keyboard arrives too",
+        ready && readyAgain && !harness && plainLog === "d:t|u:t|" && upLog === "u:t|",
+        `${harness}listener ${ready}/${readyAgain}, T typed: ${JSON.stringify(plainLog)} (expected "d:t|u:t|"), T released after refocus: ${JSON.stringify(upLog)} (expected "u:t|")${releasedFirst.error ? `, ${releasedFirst.error}` : ""}`);
+    }
+    {
+      await nothingToReopen();
+      await showPage("t3");
+      const ready = (await swallowKeys()) === true;
+      const pageFocus = { focus: "page", settle: 300 };
+      const presses = await whileHeld(() => shiftCmdT("down", pageFocus), async () => [await press(K("x", 7), { ...asAppKit, wait: 200 })], () => releaseT());
+      const keys = await chromiumKeys();
+      const harness = notKey(...presses);
+      check("⇧⌘T held in a Chromium page while x is typed: the page gets x but never T going down; T's release still reaches it, which is Chromium's own rule (a pre-handled key's release is held back only until the next keydown)",
+        ready && !harness && keys?.downs.join() === "x" && keys?.ups.join() === "x,t",
+        `${harness}listener ${ready}, keydowns ${JSON.stringify(keys?.downs)} (expected ["x"]), keyups ${JSON.stringify(keys?.ups)} (expected ["x","t"])`);
+    }
+    {
+      const small = await ac(`return ac.store.getState().createWindow({ kind: "small", url: ${JSON.stringify(wkUrl)} });`);
+      try {
+        let laTab = null;
+        for (let i = 0; i < 60 && !laTab; i++) {
+          await sleep(250);
+          laTab = await ac(`const s = ac.store.getState(), w = s.windows[${JSON.stringify(small)}], id = w && w.activeTabIds[w.profileId];
+            return id && s.tabs[id]?.title === "wk" && !s.live[id]?.isLoading && ac.webviews.get(id) ? id : null;`);
+        }
+        await press(K("x", 7), { asKey: true, dry: true, wait: 100 });
+        const laPage = (expr) => ac(`return ac.webviews.get(${JSON.stringify(laTab)}).evaluate(${JSON.stringify(`post("result", JSON.stringify(${expr}))`)});`);
+        const laPress = (key) => ac(`return ac.shell.devKeyEquivalent(${JSON.stringify(small)}, ${JSON.stringify({ ...key, ...asAppKit, wait: 500 })});`);
+        const laFocus = async () => {
+          await ac(`ac.webviews.get(${JSON.stringify(laTab)}).focus(); return 1;`);
+          await sleep(200);
+          return (await laPage(`(document.documentElement.dataset.laKeys = "", window.laListening ??= (addEventListener("keydown", (e) => { document.documentElement.dataset.laKeys += "d:" + e.key + "|"; }, true),
+            addEventListener("keyup", (e) => { if (!["Control", "Shift", "Alt", "Meta"].includes(e.key)) document.documentElement.dataset.laKeys += "u:" + e.key + "|"; }, true), true),
+            document.getElementById("f").focus(), window.laListening === true)`)) === true;
+        };
+        const ready = !!laTab && (await laFocus());
+        const pageDown = await laPress(K("\uF72D", 121, "control", "function"));
+        const ctrlTab = await laPress(K("\t", 48, "control"));
+        await ac(`ac.switcher.cancelSwitcher(); return 1;`);
+        const reservedLog = await laPage(`document.documentElement.dataset.laKeys ?? null`);
+        const plain = await laPress(K("x", 7));
+        const plainLog = await laPage(`document.documentElement.dataset.laKeys ?? null`);
+        const harness = notKey(pageDown, ctrlTab, plain);
+        const fired = [pageDown, ctrlTab].flatMap((r) => r.fired ?? []).map((f) => f.command);
+        check("Little Ardia with a WebKit page: ⌃⇟ and ⌃Tab, whose commands are off there, stop at Ardia and the page sees neither; a plain x still reaches the page",
+          ready && !harness && !fired.length && reservedLog === "" && plainLog === "d:x|u:x|",
+          `${harness}tab ${laTab}, listener ${ready}, fired ${fired.join(",") || "nothing"}, the page's keys after ⌃⇟ and ⌃Tab ${JSON.stringify(reservedLog)} (expected none), after x ${JSON.stringify(plainLog)}`);
+      } finally {
+        await ac(`ac.store.getState().closeWindow(${JSON.stringify(small)}); return 1;`);
+        await sleep(500);
+      }
+    }
+    {
+      await nothingToReopen();
+      const cmdRight = K("", 124, "command", "function");
+      const bind = (binding) => ac(`const s = ac.store.getState(), { reopenClosedTab: _, ...rest } = s.settings.shortcuts ?? {};
+        s.updateSettings({ shortcuts: ${binding ? `{ ...rest, reopenClosedTab: ${JSON.stringify(binding)} }` : "rest"} }); return 1;`);
+      const reservedAs = async (want) => {
+        let by = "";
+        for (let i = 0; i < 30; i++) {
+          by = await reservedBy(cmdRight);
+          if ((by === "ardia.command.reopenClosedTab") === want) break;
+          await sleep(100);
+        }
+        return by;
+      };
+      await bind(["", "command"]);
+      const boundBy = await reservedAs(true);
+      let result = {};
+      try {
+        await showPage("t4");
+        await press(K("x", 7), { focus: "page", dry: true, wait: 100 });
+        await cdp("?t4", "(window.downs = 0, window.counting ??= (addEventListener('keydown', () => window.downs++, true), true), document.getElementById('f').focus(), document.getElementById('f').setSelectionRange(0, 0), true)");
+        await sleep(400);
+        const crField = await press(cmdRight, { ...asAppKit, wait: 400 });
+        const crCaret = await cdp("?t4", "[document.getElementById('f').selectionStart, document.getElementById('f').value.length].join(' of ')");
+        await cdp("?t4", "(window.downs = 0, document.activeElement.blur(), true)");
+        await sleep(400);
+        const crBody = await press(cmdRight, { ...asAppKit, wait: 400 });
+        const crBodyDowns = await cdp("?t4", "window.downs");
+        const wkReady = await wkFocus(true, false);
+        await wkPage(`(document.getElementById("f").setSelectionRange(0, 0), 1)`);
+        const wkField = await press(cmdRight, { ...asAppKit, wait: 400 });
+        const wkCaret = await wkPage(`[document.getElementById("f").selectionStart, document.getElementById("f").value.length].join(" of ")`);
+        const wkBodyReady = await wkFocus(false, false);
+        const wkBody = await press(cmdRight, { ...asAppKit, wait: 400 });
+        const wkBodyCounts = await wkCounts();
+        result = { crField, crCaret, crBody, crBodyDowns, wkReady, wkField, wkCaret, wkBodyReady, wkBody, wkBodyCounts };
+      } finally {
+        await bind(null);
+        await reservedAs(false);
+      }
+      const { crField, crCaret, crBody, crBodyDowns, wkReady, wkField, wkCaret, wkBodyReady, wkBody, wkBodyCounts } = result;
+      const presses = [crField, crBody, wkField, wkBody].filter(Boolean);
+      const harness = presses.length === 4 ? notKey(...presses) : "harness: a press didn't run; ";
+      const fired = presses.flatMap((r) => r.fired ?? []).map((f) => f.command);
+      const atEnd = (caret) => typeof caret === "string" && /^(\d+) of \1$/.test(caret) && caret !== "0 of 0";
+      check("Reopen Closed Tab rebound to ⌘→ with nothing to reopen: in a text field ⌘→ still moves the caret (Chromium and WebKit), outside one it stops at Ardia and no page sees it",
+        boundBy === "ardia.command.reopenClosedTab" && !harness && wkReady && wkBodyReady && !fired.length && atEnd(crCaret) && atEnd(wkCaret) && crBodyDowns === 0 && wkBodyCounts?.down === 0 && wkBodyCounts?.up === 0,
+        `${harness}⌘→ ${boundBy || "not reserved"}, fired ${fired.join(",") || "nothing"}, Chromium caret 0 → ${crCaret}, WebKit caret 0 → ${wkCaret} (expected the end), Chromium body keydowns ${crBodyDowns}, WebKit body ${saw(wkBodyCounts)}`);
     }
 
     {

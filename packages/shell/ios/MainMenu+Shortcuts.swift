@@ -1,5 +1,6 @@
 import AppKit
 import ArdiaCore
+import WebKit
 
 extension MainMenu {
   private static let dynamicCommands: Set<String> = [
@@ -58,8 +59,11 @@ extension MainMenu {
     return caretArrows.contains(item.keyEquivalent) && (mods == .command || mods == [.command, .shift])
   }
 
+  private static let webKitTextType = NSPasteboard.PasteboardType("NSStringPboardType")
+
   static func editsText(_ responder: NSResponder?) -> Bool {
     if responder is NSText { return true }
+    if let page = responder as? WKWebView { return page.validRequestor(forSendType: nil, returnType: webKitTextType) != nil }
     let textInputType = NSSelectorFromString("textInputType")
     guard let page = responder, FocusHandoff.isPage(page), page.responds(to: textInputType) else { return false }
     typealias Getter = @convention(c) (AnyObject, Selector) -> Int32

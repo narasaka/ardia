@@ -16,6 +16,7 @@ export type KeyPress = {
   dry?: boolean;
   send?: boolean;
   again?: number;
+  phase?: "down" | "up";
   release?: boolean | ("command" | "shift" | "option" | "control" | "function")[];
 };
 export type KeyPressResult = {

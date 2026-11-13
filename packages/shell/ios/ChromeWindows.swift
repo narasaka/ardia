@@ -21,6 +21,7 @@ enum ChromeWindows {
     closeHandlerInstalled = true
     ArdiaChromeWindowHost.shouldCloseHandler = { WindowManager.shared.windowShouldClose($0) }
     ArdiaChromeWindowHost.refusesUnhandledKeyHandler = { FocusHandoff.shared.refusesUnhandledKey($1, in: $0) }
+    ArdiaChromeWindowHost.yieldsReservedKeyHandler = { MenuTarget.yieldsToTextEditing($0) }
   }
 
   private static let drawnMoves = LaunchConfig.shared.switchOn("sidebarSlideLean")

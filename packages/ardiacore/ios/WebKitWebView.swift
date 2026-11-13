@@ -8,7 +8,8 @@ final class WebKitWebView: WKWebView {
   let nowPlaying = ArdiaNowPlaying()
   var captureOrigins: [String: Set<String>] = [:]
   var autoPictureInPictureRule = WebKitAutoPictureInPicture()
-  private var keyUpOfReservedKey: UInt16?
+  private var keysHandedToMenu = Set<UInt16>()
+  private var resignKeyObserver: NSObjectProtocol?
 
   override init(frame: CGRect, configuration: WKWebViewConfiguration) {
     super.init(frame: frame, configuration: configuration)
@@ -18,6 +19,10 @@ final class WebKitWebView: WKWebView {
 
   required init?(coder: NSCoder) {
     super.init(coder: coder)
+  }
+
+  deinit {
+    resignKeyObserver.map(NotificationCenter.default.removeObserver)
   }
 
   private func mutePageAudio() {
@@ -48,27 +53,38 @@ final class WebKitWebView: WKWebView {
 
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
     guard (window?.firstResponder as? NSView)?.isDescendant(of: self) == true else { return super.performKeyEquivalent(with: event) }
-    let reserved = ArdiaPerformReservedKey(event)
-    keyUpOfReservedKey = reserved ? event.keyCode : nil
-    return reserved || super.performKeyEquivalent(with: event)
+    guard ArdiaPerformReservedKey(event) else {
+      keysHandedToMenu.remove(event.keyCode)
+      return super.performKeyEquivalent(with: event)
+    }
+    keysHandedToMenu.insert(event.keyCode)
+    return true
   }
 
   override func keyDown(with event: NSEvent) {
-    keyUpOfReservedKey = nil
+    keysHandedToMenu.remove(event.keyCode)
     super.keyDown(with: event)
   }
 
   override func keyUp(with event: NSEvent) {
-    if keyUpOfReservedKey == event.keyCode {
-      keyUpOfReservedKey = nil
-      return
-    }
+    if keysHandedToMenu.remove(event.keyCode) != nil { return }
     super.keyUp(with: event)
   }
 
   override func resignFirstResponder() -> Bool {
-    keyUpOfReservedKey = nil
+    keysHandedToMenu.removeAll()
     return super.resignFirstResponder()
+  }
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    keysHandedToMenu.removeAll()
+    resignKeyObserver.map(NotificationCenter.default.removeObserver)
+    resignKeyObserver = window.map {
+      NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: $0, queue: .main) { [weak self] _ in
+        self?.keysHandedToMenu.removeAll()
+      }
+    }
   }
 
   override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {

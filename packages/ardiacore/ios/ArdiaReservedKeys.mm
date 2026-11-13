@@ -105,6 +105,8 @@ bool IsSidebarKey(NSEvent *event) {
 
 namespace ardia_window {
 
+BOOL (^gYieldsReservedKey)(NSMenuItem *);
+
 NSMenuItem *ReservedMenuItemForEvent(NSEvent *event) {
   return MenuItemForEvent(event, ReservedIdentifiersIn(event.window));
 }
@@ -133,8 +135,12 @@ bool KeepsUnhandledSidebarKeyInPage(NSWindow *window, NSEvent *event) {
 }
 
 BOOL ArdiaPerformReservedKey(NSEvent *event) {
-  return event.type == NSEventTypeKeyDown && (IsReservedKey(event) || IsSecondSidebarKeyPress(event)) &&
-         [NSApp.mainMenu performKeyEquivalent:event];
+  if (event.type != NSEventTypeKeyDown) return NO;
+  if (NSMenuItem *reserved = ReservedMenuItemForEvent(event)) {
+    if ([NSApp.mainMenu performKeyEquivalent:event]) return YES;
+    return !(gYieldsReservedKey && gYieldsReservedKey(reserved));
+  }
+  return IsSecondSidebarKeyPress(event) && [NSApp.mainMenu performKeyEquivalent:event];
 }
 
 namespace ardia_host {

@@ -164,6 +164,14 @@ NSView *ArdiaWindowRootView(NSWindow *window) {
   return gRefusesUnhandledKey;
 }
 
++ (void)setYieldsReservedKeyHandler:(BOOL (^)(NSMenuItem *))handler {
+  gYieldsReservedKey = [handler copy];
+}
+
++ (BOOL (^)(NSMenuItem *))yieldsReservedKeyHandler {
+  return gYieldsReservedKey;
+}
+
 + (void)embedRootView:(NSView *)root inWindow:(NSWindow *)window {
   ArdiaWindowController *controller = [ArdiaWindowController forNSWindow:window];
   if (!controller) return;

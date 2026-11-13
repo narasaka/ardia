@@ -88,12 +88,17 @@ final class MenuTarget: NSObject, NSMenuItemValidation {
     if item.tracksChecked { item.state = state.checked.contains(item.stateKey) ? .on : .off }
     let title = state.titles[item.stateKey] ?? item.defaultTitle
     if item.title != title { item.title = title }
-    if item.keyEquivalent == "\r", NSApp.keyWindow?.firstResponder is NSText { return false }
-    if MainMenu.movesCaret(item), NSApp.currentEvent?.type == .keyDown, MainMenu.editsText(NSApp.keyWindow?.firstResponder) { return false }
+    if Self.yieldsToTextEditing(item) { return false }
     if item.command == "findInPage", WindowManager.shared.keyWindowKind == .settings { return true }
     let enabled = !state.disabled.contains(item.stateKey) && !state.disabled.contains(item.command)
     if item.hidesWhenDisabled, item.isHidden == enabled { item.isHidden = !enabled }
     return enabled
+  }
+
+  static func yieldsToTextEditing(_ item: NSMenuItem) -> Bool {
+    let responder = NSApp.keyWindow?.firstResponder
+    if item.keyEquivalent == "\r", responder is NSText { return true }
+    return MainMenu.movesCaret(item) && NSApp.currentEvent?.type == .keyDown && MainMenu.editsText(responder)
   }
 
   @objc func quit(_ sender: Any?) { QuitFlow.shared.confirm() }
