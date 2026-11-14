@@ -192,7 +192,7 @@ const PANE_VIEWS: Record<SettingsPane, (place: SettingsPlace) => ReactNode> = {
   sync: () => <SyncPane />,
   tabs: () => <TabsPane />,
   appearance: () => <AppearancePane />,
-  privacy: () => <PrivacyPane />,
+  privacy: ({ profileId, detail }) => <PrivacyPane profileId={profileId} site={detail} />,
   passwords: ({ profileId }) => <PasswordsPane profileId={profileId} />,
   autofill: ({ profileId }) => <AutofillPane profileId={profileId} />,
   extensions: ({ profileId, detail }) => <ExtensionsPane profileId={profileId} detail={detail} />,
