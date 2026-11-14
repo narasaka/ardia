@@ -1,6 +1,6 @@
 import type { StripDock, StripEntry, StripGroupEntry, StripMember } from "../../state/tabs/topStrip";
 import type { Dock, DropTarget } from "./model";
-import { DOCK_GAP, GAP, ITEM_HEIGHT, MAX_CHIP, MIN_CHIP, PEEK_BORDER, PEEK_LEFT, PINNED_CELL, PINNED_SPACING } from "./tokens";
+import { DOCK_GAP, GAP, MAX_CHIP, MIN_CHIP, NEW_TAB_ROOM, PEEK_BORDER, PEEK_LEFT, PINNED_CELL, PINNED_SPACING } from "./tokens";
 import { captionRoom, WINDOW_CHROME, type WindowChrome } from "../../lib/windowChrome";
 
 export const GROUP_MARGIN_LEFT = 3.5;
@@ -138,6 +138,8 @@ export type StripLayout = {
   targets: (DropTarget | null)[];
   memberWidth: (m: StripMember) => number;
   spanOf: (tabId: string) => [number, number] | null;
+  tabsEnd: number;
+  tabsShrink: boolean;
 };
 
 const dockEntry = (entries: StripEntry[]) => entries.find((e): e is StripDock => e.kind === "dock");
@@ -155,14 +157,15 @@ export function layoutStrip(entries: StripEntry[], activeId: string, pageWidth: 
   const groupChip = (g: StripGroupEntry) => measured.groupChip(g.id) ?? 0;
   const folderChip = (m: StripMember) => measured.folderChip(m.id) ?? 0;
   const visible = rows.flatMap((e) => (e.kind !== "group" ? [e] : e.collapsed ? e.members.filter((m) => holds(m, activeId)) : e.members));
+  const tabUnits = visible.reduce((n, m) => n + units(m, activeId), 0);
   const chip = heldChip ?? stripTabWidth({
     pageWidth,
     dockWidth: dockSpan(dock),
     groups: rows.flatMap((e) => (e.kind === "group" ? [{ chip: groupChip(e), expanded: !e.collapsed, shown: e.members.some((m) => holds(m, activeId)) }] : [])),
-    tabUnits: visible.reduce((n, m) => n + units(m, activeId), 0),
+    tabUnits,
     fixed: visible.reduce((n, m) => n + (m.kind === "folder" ? folderChip(m) + (holds(m, activeId) ? MEMBERS_INSET : GAP) : 0), 0),
     gap: GAP,
-    plus: ITEM_HEIGHT,
+    plus: NEW_TAB_ROOM,
     min: MIN_CHIP,
     max: MAX_CHIP,
   });
@@ -194,10 +197,14 @@ export function layoutStrip(entries: StripEntry[], activeId: string, pageWidth: 
     const { widths, offsets } = groups.get(row)!;
     return [left + groupChip(row) + MEMBERS_INSET + (row.collapsed ? 0 : offsets[at]!), widths[at]!];
   };
-  return { chip, top, targets, memberWidth, spanOf };
+  const end = top.slots.length ? top.lefts.at(-1)! + top.slots.at(-1)!.width : 0;
+  return { chip, top, targets, memberWidth, spanOf, tabsEnd: dockSpan(dock) + end, tabsShrink: tabUnits > 0 };
 }
 
 export function stripCaptionRoom(floating: boolean, fullScreen: boolean, chrome: WindowChrome = WINDOW_CHROME): number {
   if (fullScreen) return 0;
   return captionRoom(floating ? PEEK_LEFT + PEEK_BORDER : 0, 0, chrome);
 }
+
+export const newTabPinned = (chip: number, tabsEnd: number, pageWidth: number, tabsShrink = true) =>
+  (chip <= MIN_CHIP || !tabsShrink) && tabsEnd + GAP + NEW_TAB_ROOM > pageWidth + 0.5;
