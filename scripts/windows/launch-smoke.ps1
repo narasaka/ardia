@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "process-tree.ps1")
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $testBuild = Join-Path (Split-Path -Parent (Resolve-Path -LiteralPath $App).Path) "Ardia.test-build"
 New-Item -ItemType File -Force -Path $testBuild | Out-Null
@@ -548,8 +549,10 @@ function Wait-GateLine([object]$Run, [string]$CaseLog, [string]$Pattern) {
 }
 
 function Stop-Tree([int]$Id) {
-  Get-CimInstance Win32_Process -Filter "ParentProcessId=$Id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-Tree ([int]$_.ProcessId) }
-  Stop-Process -Id $Id -Force -ErrorAction SilentlyContinue
+  $running = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate -OperationTimeoutSec 15 -ErrorAction SilentlyContinue)
+  $order = Get-StopOrder $Id $running
+  Write-Host "stopping $($order.Count) process(es) under $Id"
+  foreach ($process in $order) { Stop-Process -Id $process -Force -ErrorAction SilentlyContinue }
 }
 
 function Stop-GateLaunch([object]$Run) {

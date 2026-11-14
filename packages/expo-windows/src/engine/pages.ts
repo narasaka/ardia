@@ -3,8 +3,9 @@ import { hostCall, onEngineTopic } from "./host";
 import { takerOfOpenedTab } from "./openedTabs";
 import { noteLoadAsked, openingPage, shapedPageEvent, type OpeningPage } from "./pageEvents";
 import { privateSessionOpened } from "./privateWindows";
-import type { ExternalAppRequest, OpenWindowRequest } from "@ardia/ardiacore";
+import type { ExternalAppRequest, NavigationState, OpenWindowRequest } from "@ardia/ardiacore";
 import type { CoverRect } from "./covers";
+import { notePageAsked, notePageSettled } from "./dialogPages";
 
 export type PageListener = (name: string, data: unknown) => void;
 export type PageRect = Omit<CoverRect, "radius">;
@@ -116,6 +117,7 @@ function listen() {
       for (const pressed of [...pressListeners]) pressed(page.windowId);
     }
     if (event.name === "externalApp") return askExternalApp(page, event.data);
+    if (event.name === "navigation" && (event.data as Partial<Pick<NavigationState, "isLoading">> | null)?.isLoading === false) notePageSettled(page.key);
     const data = placedPoint(page, event.name, shapedPageEvent(page.opening, event.name, event.data));
     for (const listener of [...page.listeners]) listener(event.name, data);
   });
@@ -227,6 +229,7 @@ export function mountPage(key: string, from: PageStart, listener: PageListener):
       focusAsked: 0,
       focusArgs: {},
     };
+    notePageAsked(key);
     page.ready = begin(page, from);
     pages.set(key, page);
     if (followBeforeMount === key) {
@@ -267,6 +270,7 @@ function closePage(page: Page) {
   page.closed = true;
   if (lastAskedToFocus === page) lastAskedToFocus = null;
   externalAppAnswers?.forgetPage(page.key);
+  notePageSettled(page.key);
   if (pages.get(page.key) === page) pages.delete(page.key);
   const closing: Promise<void> = page.ready
     .then(() => hostCall("tab.close", { key: page.key }))
@@ -291,6 +295,7 @@ const REOPENING_METHODS = new Set(["loadUrl", "reload", "forceReload"]);
 function readyOrReopened(page: Page, url: unknown): Promise<boolean> {
   page.ready = page.ready.then((opened) => {
     if (opened || page.closed) return opened;
+    notePageAsked(page.key);
     return begin(page, { ...page.from, adopt: undefined, windowId: page.windowId }).then((again) => {
       if (page.closed) return again;
       if (again) {
