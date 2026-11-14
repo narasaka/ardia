@@ -8,3 +8,5 @@ import "./guests";
 import "./passwords";
 import "./pagePasswords";
 import "./autofill";
+import "./requests";
+import "./contentBlocker";
