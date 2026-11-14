@@ -1,7 +1,9 @@
 import { app, type BrowserWindow } from "electron";
 import { join } from "node:path";
 import { installBridge } from "./bridge";
+import "./engine";
 import "./modules";
+import "./services";
 import { dataDirectory } from "./paths";
 import { createHost } from "./windows";
 
