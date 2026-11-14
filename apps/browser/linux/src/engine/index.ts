@@ -7,3 +7,4 @@ import "./opening";
 import "./downloads";
 import "./permissions";
 import "./hostDomains";
+import "./pageKeys";

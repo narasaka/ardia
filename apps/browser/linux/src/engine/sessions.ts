@@ -51,6 +51,7 @@ app.on("web-contents-created", (_event, contents) => {
     webPreferences.sandbox = true;
     webPreferences.webSecurity = true;
     webPreferences.spellcheck = true;
+    webPreferences.transparent = false;
   });
 });
 

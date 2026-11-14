@@ -1,5 +1,6 @@
 import { dialog, nativeImage, type WebContents } from "electron";
 import { defineModule } from "../bridge";
+import { appWindow } from "../windows";
 import { guestById, navigationOf, securityOf, stepZoom, tell, tellNavigation, windowOf, type Guest } from "./guests";
 import { sendToPageScript } from "./pageScriptBridge";
 import { resolveDisplayMedia } from "./permissions";
@@ -165,8 +166,16 @@ const pageCalls: Record<string, PageCall> = {
   resendNavigation: (guest) => tellNavigation(guest),
 };
 
+async function captureWindow(windowId: string) {
+  const window = appWindow(windowId);
+  if (!window || window.isDestroyed()) return null;
+  const image = await window.webContents.capturePage();
+  return image.isEmpty() ? null : image.toPNG().toString("base64");
+}
+
 defineModule("ArdiaLinuxPages", {
   async: {
+    captureWindow: (windowId: string) => captureWindow(windowId),
     page: async (guestId: number, method: string, args: Args) => {
       const guest = guestById(guestId);
       if (!guest || guest.contents.isDestroyed()) return null;
