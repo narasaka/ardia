@@ -16,7 +16,7 @@ the Windows port (`docs/windows.md`): an app project under `apps/browser/linux`,
 | `expo-modules-core` | `packages/expo-linux`: native modules are the main process's, reached through the preload bridge |
 | Pages | Electron `<webview>` elements inside the UI's DOM, one per tab, partition `persist:<profile>` |
 | Windows | Frameless `BrowserWindow`s, each a child the one UI runtime opened and renders into |
-| Chrome services | Written in TypeScript in the main process (history, bookmarks, favicons, downloads, permissions, passwords) |
+| Chrome services | Written in TypeScript in the main process (history, bookmarks, favicons, passwords, autofill, content blocker, extensions, import) |
 
 ### One runtime, many windows
 
@@ -103,6 +103,33 @@ the main method where one is needed (`aroundMain` in `tsModules.ts`), the main p
   build time): Ardia checks every 6 hours and offers the release page; it doesn't update itself yet.
 - **Secrets** (`ArdiaKeychain`) are sealed with `safeStorage` (the desktop keyring through libsecret or KWallet; with
   no keyring Electron falls back to its `basic_text` key).
+
+## Chrome services
+
+`apps/browser/linux/src/services` answers the Mac engine's data domains in TypeScript, in the main process.
+
+- **Storage.** One SQLite database per profile (`node:sqlite`), `<data>/Profiles/<id or Default>/Ardia.sqlite`,
+  migrated by `user_version`. Private profiles get an in-memory database and refuse saved-data calls, like the Mac's
+  off-the-record profiles. Secrets (passwords, card numbers) are sealed with `safeStorage`.
+- **History, favicons** fill from linux-pages' page events (`engine/pages.ts`): main-frame navigations, titles, icon
+  URLs. Icons are fetched through the page's session; PNG and JPEG decode in main, anything else (ICO, SVG, WebP) in a
+  hidden decoder window that closes when idle.
+- **Bookmarks, site settings, zoom, autofill, search suggestions, browsing-data clearing** answer their domains.
+  `siteSetting`/`rememberSiteSetting` and `zoomFor` in `services/sites.ts` are the store permission prompts and zoom
+  read and write.
+- **Page scripts.** `definePageScript` registers a frame preload on every page session (`onPageSession`); the
+  password manager (fill, catch submitted logins, `ArdiaLinuxPasswords` `prompt`/`resolvePrompt` keyed by the page's
+  webContents id) and the content blocker's cosmetic filtering use it.
+- **Requests.** Electron keeps one `webRequest` listener per event per session, so filters go through
+  `services/requests.ts` (`onBeforeRequest`, `onHeadersReceived`), never the session directly.
+- **Content blocker.** `@ghostery/adblocker`'s engine with uBlock Origin's default lists, cached and serialized under
+  `<data>/ContentBlocker`.
+- **Extensions.** `session.extensions` plus `electron-chrome-extensions` (chrome.tabs, chrome.action, …) and
+  `electron-chrome-web-store` (the Web Store's install button). Their preloads are embedded in the bundle and written
+  out at startup. `ArdiaLinuxExtensions.executeAction(webContentsId, id)` answers a page's `executeExtensionAction`.
+- **Import.** `ArdiaImport` runs the Windows readers in main with a Node host: Chrome, Chromium, Brave, Edge, Vivaldi,
+  Opera, Firefox and Zen under `~/.config`, `~/.mozilla`, snap and flatpak homes; Chromium's v10/v11 keys (built-in
+  key, libsecret or KWallet), Firefox's key4.db.
 
 ## Sandbox
 
