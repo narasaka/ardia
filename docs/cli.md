@@ -81,8 +81,9 @@ the pins into `pyproject.toml`).
 - `ardia scripts new|test|install|uninstall|list` writes, tests and installs userscripts (see Userscripts).
 - `ardia config path|init|get|set|unset|list|edit|check` reads, writes and checks `config.json` (see
   `docs/config.md`, The ardia command). Never needs Ardia running.
-- `ardia theme new|use|list|check` makes, picks and checks themes: colours, type, metrics, layout and icons (see
-  `docs/config.md`, Themes).
+- `ardia theme new|use|list|check|get|set|unset` makes, picks, edits and checks themes: colours, type, metrics,
+  layout and icons. `ardia theme set KEY VALUE` changes one key of the active theme (`dark.accent`,
+  `metrics.radius.row`, `icons.chevron.down`) and a running Ardia restyles at once (see `docs/config.md`, Themes).
 - `ardia run COMMAND [ARG]` runs one of Ardia's commands over `<data dir>/ArdiaControl.sock` (see
   `docs/automation.md`).
 - `ardia commands` lists the commands `run` takes (see `docs/automation.md`).
