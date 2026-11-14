@@ -107,4 +107,4 @@ EOF
 - `--port N` anywhere on the line (or `ARDIA_PORT`). Write `ardia browse` out in each command. Exit 2: Ardia
   isn't reachable; its message says what to ask the user.
 - `ardia browse <command> --help`. `references/troubleshooting.md`: input that doesn't land, background tabs,
-  refused commands, sessions, exit codes. `automation.md`: tabs and groups (`ardia tabs --usage`), events, hooks. `userscripts.md`, `config.md`, `daily-reports.md`.
+  refused commands, sessions, exit codes. `automation.md`: tabs and groups (`ardia tabs --usage`), events, hooks. `userscripts.md`, `config.md` (looks: `ardia theme set`), `daily-reports.md`.
