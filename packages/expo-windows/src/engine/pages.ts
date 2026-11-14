@@ -238,7 +238,7 @@ export function mountPage(key: string, from: PageStart, listener: PageListener):
     page.profile = from.profile ?? "";
     page.show = null;
     const moving = page;
-    page.ready = page.ready.then(() => begin(moving, from));
+    page.ready = page.ready.then((opened) => (moving.closed ? opened : begin(moving, from)));
   }
   const mounted = page;
   mounted.parked = false;
