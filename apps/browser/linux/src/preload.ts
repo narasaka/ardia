@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import "./engine/hostPreload";
 
 type Reply = { value?: unknown; error?: string; code?: string };
 type EventListener = (module: string, event: string, payload: unknown) => void;
