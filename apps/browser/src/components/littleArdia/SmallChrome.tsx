@@ -4,13 +4,12 @@ import { View } from "react-native";
 import { useTheme } from "../ui/theme";
 import { CARD_INSET } from "../../lib/windowLayout";
 import { pageHostLabel } from "../../lib/url";
-import { useTabLive } from "../../state/browser/hooks";
 import type { Tab } from "../../state/browser/types";
 import { usePage } from "../../state/tabs/pageState";
 import { font, radius, space } from "../ui/tokens";
-import { SMALL_BAR_BUTTON, SMALL_BAR_GAP, SMALL_FIELD_GAP, SMALL_FIELD_HEIGHT as FIELD_HEIGHT, SMALL_PROGRESS, smallBarRow } from "./tokens";
+import { SMALL_BAR_BUTTON, SMALL_BAR_GAP, SMALL_FIELD_GAP, SMALL_FIELD_HEIGHT as FIELD_HEIGHT, smallBarRow } from "./tokens";
 import { Favicon } from "../favicon/Favicon";
-import { TabProgressBar } from "../toolbar/ProgressBar";
+import { FieldLoadFill } from "../toolbar/FieldLoadFill";
 import { insecureLevel } from "../toolbar/Toolbar";
 import { SMALL_BAR_HEIGHT } from "../../state/windows/small";
 
@@ -18,13 +17,11 @@ export const SMALL_INSET = CARD_INSET;
 export { SMALL_BAR_BUTTON, SMALL_BAR_GAP, SMALL_FIELD_GAP, SMALL_WINDOW_FRAME, smallWindowRadius } from "./tokens";
 const HOST = { flexShrink: 0, maxWidth: "60%" } as const;
 const FLEX = { flex: 1 } as const;
-const PROGRESS_PLACE = { position: "absolute", left: SMALL_PROGRESS.left, width: SMALL_PROGRESS.share, top: 0, bottom: 0 } as const;
 
 export type SmallBarButton = { icon: string; tooltip: string; onPress: () => void; disabled?: boolean };
 
 export function SmallBar({
   fieldLeft,
-  fieldMaxWidth,
   field,
   buttons,
   trailing,
@@ -35,7 +32,6 @@ export function SmallBar({
   height?: number;
   trailingRoom?: number;
   fieldLeft: number;
-  fieldMaxWidth?: number;
   field: ReactNode;
   buttons: SmallBarButton[];
   trailing?: ReactNode;
@@ -49,7 +45,7 @@ export function SmallBar({
     <ToolbarRowContext.Provider value={smallBarRow()}>
       <View style={{ height }}>
         {children}
-        <View style={{ position: "absolute", left: fieldLeft, right: right + buttonsWidth + SMALL_FIELD_GAP, maxWidth: fieldMaxWidth, top: mid - FIELD_HEIGHT / 2, height: FIELD_HEIGHT }}>{field}</View>
+        <View style={{ position: "absolute", left: fieldLeft, right: right + buttonsWidth + SMALL_FIELD_GAP, top: mid - FIELD_HEIGHT / 2, height: FIELD_HEIGHT }}>{field}</View>
         <View style={{ position: "absolute", right, top: mid - SMALL_BAR_BUTTON / 2, flexDirection: "row", gap: SMALL_BAR_GAP }}>
           {buttons.map((b) => (
             <Button variant="icon" key={b.tooltip} icon={b.icon} look="row" disabled={b.disabled} tooltip={b.tooltip} onPress={b.onPress} />
@@ -63,7 +59,6 @@ export function SmallBar({
 
 export function PageLabel({ tab, hovered = false, label }: { tab: Tab; hovered?: boolean; label?: string }) {
   const theme = useTheme();
-  const live = useTabLive(tab.id);
   const insecure = usePage(tab.id, (p) => !!insecureLevel(p)) && !!tab.url;
   const host = tab.url ? pageHostLabel(tab.url) : "";
   const title = tab.customTitle || tab.title;
@@ -81,6 +76,7 @@ export function PageLabel({ tab, hovered = false, label }: { tab: Tab; hovered?:
         backgroundColor: hovered ? theme.toolbarHover : undefined,
       }}
     >
+      <FieldLoadFill key={tab.id} tabId={tab.id} color={theme.accent} height={FIELD_HEIGHT} radius={radius.tile} />
       {insecure ? (
         <Symbol name="lock.open.trianglebadge.exclamationmark.fill" size={12} color={theme.textSecondary} style={{ width: 16, height: 16 }} />
       ) : tab.url ? (
@@ -100,11 +96,6 @@ export function PageLabel({ tab, hovered = false, label }: { tab: Tab; hovered?:
           Search or enter address
         </Text>
       )}
-      {live.isLoading ? (
-        <View pointerEvents="none" style={PROGRESS_PLACE}>
-          <TabProgressBar tabId={tab.id} color={theme.accent} />
-        </View>
-      ) : null}
     </View>
   );
 }

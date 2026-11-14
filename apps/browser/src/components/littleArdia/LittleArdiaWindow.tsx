@@ -153,7 +153,6 @@ function LittleArdiaBar() {
       height={BAR.height}
       trailingRoom={BAR.trailingRoom}
       fieldLeft={BAR.fieldLeft}
-      fieldMaxWidth={SMALL_FIELD_MAX_WIDTH}
       field={tab ? <PageField tab={tab} windowId={windowId} hidden={panelOpen} /> : null}
       buttons={[
         { icon: copied ? "checkmark" : "link", disabled: !tab?.url, tooltip: `Copy Link (${keyText("⇧⌘C")})`, onPress: copy },

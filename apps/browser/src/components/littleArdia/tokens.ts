@@ -1,5 +1,5 @@
 import { TOOLBAR_ROWS, type ToolbarRow } from "../../lib/toolbarRow";
-import { perLook, radius, space } from "../ui/tokens";
+import { perLook, radius } from "../ui/tokens";
 
 export const smallWindowRadius = () => radius.sheet;
 
@@ -18,8 +18,6 @@ export const SMALL_FIELD_HEIGHT = 28;
 export const SMALL_FIELD_MAX_WIDTH = 520;
 
 export const smallBarRow = perLook((): ToolbarRow => ({ ...TOOLBAR_ROWS.regular, button: SMALL_BAR_BUTTON, buttonRadius: radius.toolbar }));
-
-export const SMALL_PROGRESS = { left: space.m, share: "96%" } as const;
 
 export const LITTLE_ARDIA_PINCH = { smallest: 0.6, largest: 1.04 } as const;
 
