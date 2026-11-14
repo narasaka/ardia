@@ -83,10 +83,10 @@ bool AskApp(const GURL& url,
   const int sequence = ++last_id;
   const std::string id = "x" + base::NumberToString(sequence);
   const bool has_origin = initiating_origin && !initiating_origin->opaque();
-  PendingAsks()[id] = {
-      web_contents->GetWeakPtr(), initiator_document,
-      has_origin && initiating_origin->scheme() != "chrome-extension",
-      sequence};
+  const bool asked_by_page =
+      initiating_origin && initiating_origin->scheme() != "chrome-extension";
+  PendingAsks()[id] = {web_contents->GetWeakPtr(), initiator_document,
+                       asked_by_page, sequence};
   base::DictValue data;
   data.Set("id", id);
   data.Set("url", url.spec());
