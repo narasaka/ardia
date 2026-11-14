@@ -1,0 +1,85 @@
+#!/usr/bin/env node
+const HELP = `Usage: scripts/linux/capture <port> <out-dir> [--host] [--timeout ms]
+Screenshots every app window and every page of an Ardia instance over its remote debugging port (CDP Page.captureScreenshot)
+into <out-dir> as <n>-window-<title>.png and <n>-page-<host>.png, and prints one line per file. --host also captures the hidden
+host page. Exits 1 when nothing could be captured.`;
+
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+const args = process.argv.slice(2);
+if (!args.length || args.includes("-h") || args.includes("--help")) {
+  console.log(HELP);
+  process.exit(args.length ? 0 : 2);
+}
+const [port, outDir] = args;
+const withHost = args.includes("--host");
+const timeoutAt = args.indexOf("--timeout");
+const timeoutMs = timeoutAt >= 0 ? Number(args[timeoutAt + 1]) : 15000;
+if (!port || !outDir) {
+  console.error(HELP);
+  process.exit(2);
+}
+
+const slug = (text) => (text || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "untitled";
+
+function cdp(url) {
+  const socket = new WebSocket(url);
+  let next = 0;
+  const waiting = new Map();
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(String(event.data));
+    const settle = waiting.get(message.id);
+    if (!settle) return;
+    waiting.delete(message.id);
+    message.error ? settle.reject(new Error(message.error.message)) : settle.resolve(message.result);
+  });
+  const opened = new Promise((resolve, reject) => {
+    socket.addEventListener("open", resolve, { once: true });
+    socket.addEventListener("error", () => reject(new Error(`couldn't connect to ${url}`)), { once: true });
+  });
+  return {
+    send: async (method, params = {}) => {
+      await opened;
+      const id = ++next;
+      socket.send(JSON.stringify({ id, method, params }));
+      return new Promise((resolve, reject) => {
+        waiting.set(id, { resolve, reject });
+        setTimeout(() => waiting.has(id) && (waiting.delete(id), reject(new Error(`${method} timed out`))), timeoutMs);
+      });
+    },
+    close: () => socket.close(),
+  };
+}
+
+const list = await fetch(`http://127.0.0.1:${port}/json/list`).then((response) => response.json(), () => null);
+if (!list) {
+  console.error(`capture: nothing answers on port ${port}`);
+  process.exit(1);
+}
+mkdirSync(outDir, { recursive: true });
+const isHost = (target) => target.type === "page" && /\/ui\/index\.html|^https?:\/\/127\.0\.0\.1:\d+\/?$/.test(target.url);
+const targets = list.filter((target) => (target.type === "page" || target.type === "webview") && target.webSocketDebuggerUrl && (withHost || !isHost(target)));
+let saved = 0;
+for (const [index, target] of targets.entries()) {
+  const kind = target.type === "webview" ? "page" : isHost(target) ? "host" : "window";
+  let label = target.title;
+  if (kind === "page") {
+    try {
+      label = new URL(target.url).host || target.title;
+    } catch {}
+  }
+  const file = join(outDir, `${String(index + 1).padStart(2, "0")}-${kind}-${slug(label)}.png`);
+  const session = cdp(target.webSocketDebuggerUrl);
+  try {
+    const { data } = await session.send("Page.captureScreenshot", { format: "png", fromSurface: true });
+    writeFileSync(file, Buffer.from(data, "base64"));
+    console.log(`${file}  ${target.type} ${target.url.slice(0, 100)}`);
+    saved++;
+  } catch (error) {
+    console.error(`capture: ${target.type} ${target.url.slice(0, 80)}: ${error.message}`);
+  } finally {
+    session.close();
+  }
+}
+process.exit(saved ? 0 : 1);
