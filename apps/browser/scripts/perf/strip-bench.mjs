@@ -162,16 +162,23 @@ async function run() {
   const results = { at: new Date().toISOString(), app: resolve(app), runs: {} };
   const instances = [];
   try {
-    const opened = await Promise.all(
+    const settled = await Promise.allSettled(
       profileCounts.map(async (n) => {
         const data = join(scratch, `p${n}`, "data");
-        if (reuse) return { n, inst: attach(data), ids: PROFILE_NAMES.slice(0, n).map((name, i) => (i ? name.toLowerCase() : "default")) };
+        if (reuse) {
+          const inst = attach(data);
+          instances.push(inst);
+          return { n, inst, ids: PROFILE_NAMES.slice(0, n).map((name, i) => (i ? name.toLowerCase() : "default")) };
+        }
         const seeded = seedSession(n, server.address().port);
         const inst = await launch(app, { data, fresh: true, session: seeded.session, onboarded: true, files: { "perf-probe": "renders" } });
+        instances.push(inst);
         return { n, inst, ids: seeded.ids };
       }),
     );
-    instances.push(...opened.map((o) => o.inst));
+    const failed = settled.find((s) => s.status === "rejected");
+    if (failed) throw failed.reason;
+    const opened = settled.map((s) => s.value);
     console.log("ready: every instance has loaded its bundle");
     for (const { n, inst, ids } of opened) {
       const prepared = await inst.eval(prepareBody(ids));
