@@ -1,6 +1,6 @@
 import { memo, useState } from "react";
 import { Animated, Pressable, View, type LayoutChangeEvent } from "react-native";
-import { Button, ContextMenuArea, radius, space, Symbol, Text, useHover } from "../ui";
+import { Button, ContextMenuArea, perLook, radius, space, Symbol, Text, useHover } from "../ui";
 import { layout, useTheme } from "../ui/theme";
 import { HoverSlot } from "../ui/HoverSlot";
 import { newTab } from "../../state/tabs/actions";
@@ -14,8 +14,9 @@ import { modifiersOf } from "../../lib/keys";
 import { useClipped, useShift, type ClipSource } from "./EntryMotion";
 import { TAB_ROW, useSidebarTokens } from "./tokens";
 import { SidebarRowLabel } from "./SidebarRow";
+import { buttonMotion, usePressScaleMotion } from "../ui/motion";
 
-const CLIPPED = { marginTop: -layout.rowGap, paddingTop: layout.rowGap, overflow: "hidden" } as const;
+const clippedRow = perLook(() => ({ marginTop: -layout.rowGap, paddingTop: layout.rowGap, overflow: "hidden" as const }));
 const NEW_TAB_LABEL_X = 30;
 const CLEANED_HINT_RIGHT = 30;
 const CLEANED_HINT_GAP = space.m;
@@ -29,6 +30,8 @@ export const NewTabRow = memo(function NewTabRow({ windowId, shift = null, clip 
   const tokens = useSidebarTokens();
   const cleaned = useCleanedCount(windowId);
   const { hovered, hoverProps } = useHover();
+  const pressMotion = usePressScaleMotion(true, buttonMotion.iconPressScale);
+  const iconScale = pressMotion.scale ? { transform: [{ scale: pressMotion.scale }] } : undefined;
   const [moved, movedRef] = useShift(shift);
   const [movedButtons, movedButtonsRef] = useShift(shift);
   const clipped = useClipped(clip);
@@ -40,7 +43,7 @@ export const NewTabRow = memo(function NewTabRow({ windowId, shift = null, clip 
   const hint = `${cleaned} cleaned`;
   const hintFits = widths.hint > 0 && NEW_TAB_LABEL_X + widths.label + CLEANED_HINT_GAP + widths.hint <= widths.row - CLEANED_HINT_RIGHT;
   return (
-    <View {...hoverProps} onLayout={measure("row")} style={[{ flexDirection: "row", alignItems: "center" }, clipped ? CLIPPED : null]}>
+    <View {...hoverProps} onLayout={measure("row")} style={[{ flexDirection: "row", alignItems: "center" }, clipped ? clippedRow() : null]}>
       <View pointerEvents="none" style={MEASURE_OFFSCREEN}>
         <Text lines={1} style={MEASURE_TEXT} onLayout={measure("label")}>
           New Tab
@@ -53,7 +56,11 @@ export const NewTabRow = memo(function NewTabRow({ windowId, shift = null, clip 
       </View>
       <ContextMenuArea style={{ flex: 1 }} onContextMenu={() => void openSidebarMenu(windowId)}>
         <Pressable
-          onPressIn={() => noteRowPressIn(windowId)}
+          onPressIn={() => {
+            pressMotion.onPressIn?.();
+            noteRowPressIn(windowId);
+          }}
+          onPressOut={pressMotion.onPressOut}
           onPress={(e) => {
             if (modifiersOf(e).altKey && splitViewAvailable) openNewTabInSplit(windowId);
             else toggleNewTabBar(windowId) || newTab(windowId, { newTabCommand: true });
@@ -76,7 +83,9 @@ export const NewTabRow = memo(function NewTabRow({ windowId, shift = null, clip 
                 moved.style as object,
               ]}
             >
-              <Symbol name="plus" size={13} weight="medium" color={tokens.newTabIcon} style={{ width: 16, height: 16 }} />
+              <Animated.View pointerEvents="none" style={iconScale}>
+                <Symbol name="plus" size={13} weight="medium" color={tokens.newTabIcon} style={{ width: 16, height: 16 }} />
+              </Animated.View>
               <SidebarRowLabel text="New Tab" color={tokens.newTabLabel} />
             </View>
           )}
