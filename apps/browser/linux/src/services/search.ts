@@ -1,4 +1,5 @@
 import { defineDomain } from "../engine/domains";
+import { extensionSearchEngines } from "./extensions";
 import { engineError, sessionFor } from "./profiles";
 
 const MAX_BYTES = 256 * 1024;
@@ -78,7 +79,7 @@ function suggest(profile: string, url: string, id: number): Promise<Reply> {
 }
 
 defineDomain("search", {
-  engines: () => ({ list: { engines: [] } }),
+  engines: (_args, profile) => ({ list: { engines: extensionSearchEngines(profile) } }),
   setEngineName: () => null,
   suggest: (args, profile) => suggest(profile, typeof args.url === "string" ? args.url : "", typeof args.id === "number" ? args.id : -1),
   stopSuggest: (args, profile) => {

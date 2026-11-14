@@ -197,6 +197,30 @@ export function actionStates(profile: string, webContentsId: number | null, ids:
   return out;
 }
 
+type SearchProvider = { name?: string; keyword?: string; search_url?: string; suggest_url?: string; is_default?: boolean };
+
+export function extensionSearchEngines(profile: string) {
+  const context = isPrivateProfile(profile) ? undefined : contextFor(profile);
+  if (!context) return [];
+  return context.session.extensions.getAllExtensions().flatMap((extension) => {
+    const manifest = extension.manifest as Manifest & { chrome_settings_overrides?: { search_provider?: SearchProvider } };
+    const provider = manifest.chrome_settings_overrides?.search_provider;
+    if (!provider?.search_url) return [];
+    const placeholder = (url: string) => url.replace("{searchTerms}", "%s");
+    return [
+      {
+        name: localized(extension.path, manifest, provider.name) || extension.name,
+        keyword: localized(extension.path, manifest, provider.keyword),
+        url: placeholder(provider.search_url),
+        suggestionsUrl: provider.suggest_url ? placeholder(provider.suggest_url) : "",
+        default: provider.is_default === true,
+        isOmniboxExtension: false,
+        extension: { id: extension.id, name: extension.name },
+      },
+    ];
+  });
+}
+
 export function executeAction(contents: WebContents, extensionId: string): "popup" | "sidePanel" | "none" | null {
   const entry = [...contexts.entries()].find(([, context]) => context.session === contents.session);
   if (!entry) return null;
