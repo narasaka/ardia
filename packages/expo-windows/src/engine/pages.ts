@@ -3,7 +3,7 @@ import { hostCall, onEngineTopic } from "./host";
 import { takerOfOpenedTab } from "./openedTabs";
 import { noteLoadAsked, openingPage, shapedPageEvent, type OpeningPage } from "./pageEvents";
 import { privateSessionOpened } from "./privateWindows";
-import type { ExternalAppRequest, OpenWindowRequest } from "@ardia/ardiacore";
+import type { ExternalAppRequest, NavigationState, OpenWindowRequest } from "@ardia/ardiacore";
 import type { CoverRect } from "./covers";
 import { notePageAsked, notePageSettled } from "./dialogPages";
 
@@ -117,7 +117,7 @@ function listen() {
       for (const pressed of [...pressListeners]) pressed(page.windowId);
     }
     if (event.name === "externalApp") return askExternalApp(page, event.data);
-    if (event.name === "navigation" && (event.data as { isLoading?: unknown } | null)?.isLoading === false) notePageSettled(page.key);
+    if (event.name === "navigation" && (event.data as Partial<Pick<NavigationState, "isLoading">> | null)?.isLoading === false) notePageSettled(page.key);
     const data = placedPoint(page, event.name, shapedPageEvent(page.opening, event.name, event.data));
     for (const listener of [...page.listeners]) listener(event.name, data);
   });
