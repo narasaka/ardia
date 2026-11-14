@@ -86,7 +86,6 @@ jobs:
           xvfb-run -a -s "-screen 0 1600x1000x24" scripts/linux/launch-smoke "$RUNNER_TEMP/smoke-deb" --port 9392 --app /opt/Ardia
           head -1 "$RUNNER_TEMP/smoke-deb/data/launch.log" | tee -a "$GITHUB_STEP_SUMMARY"
           grep -q "launch sandboxed with" "$RUNNER_TEMP/smoke-deb/data/launch.log"
-          ps -eo args | grep -c -- '--type=zygote' || true
           sudo apt-get remove -y -qq ardia
       - name: Screenshots in the summary
         if: ${{ !cancelled() }}
