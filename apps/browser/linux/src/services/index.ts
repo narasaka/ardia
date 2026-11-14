@@ -7,3 +7,4 @@ import "./search";
 import "./guests";
 import "./passwords";
 import "./pagePasswords";
+import "./autofill";
