@@ -27,8 +27,31 @@ mounts a React root into the child's document, and every window shares the one z
 shapes those windows in `setWindowOpenHandler` (frameless, transparent, sizes from `ArdiaAppWindows.openWindow`).
 Closing a window unmounts its root. The host is never shown and lives until quit.
 
-Styles that `react-native-web` injects into the host document are mirrored into each child document. Code that listens
-on `window`/`document` for keys, pointer or focus does so on the window it serves.
+`ArdiaAppWindows.openWindow` (`packages/expo-linux/src/windows/appWindows.ts`) asks main to shape the window
+(`shapeWindow`, in `apps/browser/linux/src/modules/appWindows.ts`), opens it, mounts `AppRegistry.runApplication("main",
+{ windowId })` into its `#root`, and asks main to show it after the first paint (fading in when `animated`). Closing
+unmounts first, then main closes it; a window closed by the window manager asks the UI first (`closeRequest`) for
+browser and Little Ardia windows. When the last app window closes, main runs the quit handshake (`willQuit`,
+`replyToTerminate`). Windows are rounded (12 px, a 1 px edge) except maximized or full screen;
+`windowCornerRadius()` is the Mac's 19 so the page card keeps Dia's 10 pt radius.
+
+`react-native-web` gives each window's document its own copy of its style sheet; other `<style>` and stylesheet links
+in the host's head are mirrored and kept in sync (`host/documentStyles.ts`). `host/acrossWindows.ts` makes the host
+answer for its windows: listeners added on the host's `window` or `document` for input, focus, resize and scroll are
+added to every app window too (react-native-web's responder system, `Pressable`'s key handling and the UI's own
+listeners need no changes), `document.activeElement`, `hasFocus()`, `visibilityState` and `getSelection()` read the
+focused window, `ResizeObserver` and `IntersectionObserver` observe each element with its own window's observer
+(`onLayout` depends on it), and `instanceof Node`/`Element`/`Event` accept objects from any app window.
+
+Native views are drawn in the DOM (`packages/expo-linux/src/views/registry.tsx`, most ported from the web demo):
+`Symbol`, `Surface`, `VisualEffect` (nearly opaque: a transparent Linux window can't blur the desktop), glass, popover
+bubbles, `FadeLabel`, the spinner, the pager's `SwipeArea`, the GL backdrop and power-up (with CSS fallbacks where WebGL2
+is blocklisted), and `WindowDragRegion`, which moves the window from main by following the cursor (so it also works
+without a window manager); a double-click maximizes. The engine's views (`ArdiaWebView`) come from
+`engine/modules`' `engineViews`. A text field taking or losing focus is reported to main
+(`ArdiaFocus.setTextInputFocused`) for the shortcut table; `claimFocus` and the key-responder calls take DOM nodes and
+stay in the renderer. Linux uses the Windows chrome (app-drawn window buttons), keys and copy wording through
+`*.linux.ts` files that re-export the Windows ones, and its own `platformFeatures.linux.ts` and `platformTerms.linux.ts`.
 
 ### Pages are `<webview>` elements
 
@@ -52,8 +75,9 @@ type LinuxBridge = {
 Main-process modules live one per file in `apps/browser/linux/src/modules/<Name>.ts` and register with
 `defineModule(name, { sync, async, constants })`. A module emits events with `emit(module, event, payload)`, which
 reaches JS as `emitNativeEvent(module, event, payload)`, the same channel the Mac's `addListener` uses. In
-`packages/expo-linux`, `requireNativeModule(name)` answers each property in this order: the main process's module
-(sync methods through `callSync`, async through `call`), modules written in TypeScript, the engine's modules,
+`packages/expo-linux`, `requireNativeModule(name)` answers each property in this order: a TypeScript wrapper around
+the main method where one is needed (`aroundMain` in `tsModules.ts`), the main process's module (sync methods through
+`callSync`, async through `call`), modules written in TypeScript (`writtenInTs`), the engine's modules, the services',
 `defaults.ts`, then an inert method that logs its name once (`ardiaLinuxMissing()` in the console lists them).
 
 ## The main process
