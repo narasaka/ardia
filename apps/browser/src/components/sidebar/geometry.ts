@@ -1,4 +1,5 @@
 import { GROUP_MEMBERS_PAD_BOTTOM, SIDEBAR_GROUP } from "../../lib/sidebarMetrics";
+import { LIGHTS_CENTER } from "../../state/windows/dockMotion";
 import { layout } from "../ui/theme";
 import { radius } from "../ui/tokens";
 import { profileSwitcher } from "../profiles/tokens";
@@ -36,3 +37,12 @@ export function listTopGap(fieldOnTop: boolean): number {
 }
 
 export const sidebarHeaderWithField = () => SIDEBAR_FIELD.top + SIDEBAR_FIELD.height;
+
+export function sidebarHeaderOf(addressBar: boolean, lightsY: number, fieldOnTop = addressBar): number {
+  if (fieldOnTop) return sidebarHeaderWithField();
+  return addressBar ? layout.sidebarHeader : layout.sidebarHeader - (LIGHTS_CENTER[1] - lightsY);
+}
+
+export function firstRowTopOf(addressBar: boolean, lightsY: number, fieldOnTop = addressBar): number {
+  return sidebarHeaderOf(addressBar, lightsY, fieldOnTop) + listTopGap(fieldOnTop);
+}

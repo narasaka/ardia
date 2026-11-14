@@ -4,7 +4,8 @@ import { radius, Symbol } from "../ui";
 import { GlassGroup } from "../ui/Glass";
 import { layout, useTheme } from "../ui/theme";
 import { useSidebarField } from "../../state/sidebar/chrome";
-import { listTopGap } from "./geometry";
+import { useAddressBarInSidebar, useToolbarLightsCenter } from "../../state/windows/layout";
+import { firstRowTopOf, listTopGap } from "./geometry";
 import { useIsActiveTab, useSettings, useTab, useWindowId } from "../../state/browser/hooks";
 import { useIsSelected } from "../../state/pins/hooks";
 import { NextMeetingBadge } from "../live/NextMeetingBadge";
@@ -95,6 +96,7 @@ export function PinSlotZone({ top = 0 }: { top?: number }) {
   const active = useDropPins();
   const gap = controller?.items.get(tailKey("tiles"))?.gap;
   const opacity = gap ? gap.interpolate({ inputRange: [0, pinSlotPitch()], outputRange: [0, 1], extrapolate: "clamp" }) : active ? 1 : 0;
+  const firstRowTop = firstRowTopOf(useAddressBarInSidebar(), useToolbarLightsCenter()[1], false);
   return (
     <>
       <View
@@ -108,7 +110,7 @@ export function PinSlotZone({ top = 0 }: { top?: number }) {
           left: layout.sidebarInset,
           right: layout.sidebarInset,
           top: 0,
-          height: top + (active ? layout.pinnedTop + layout.pinnedHeight : layout.pinnedTop - layout.rowGap),
+          height: top + (active ? firstRowTop + layout.pinnedHeight : firstRowTop - layout.rowGap),
         }}
       />
       <Animated.View
@@ -117,7 +119,7 @@ export function PinSlotZone({ top = 0 }: { top?: number }) {
           position: "absolute",
           left: layout.sidebarInset,
           right: layout.sidebarInset,
-          top: top + layout.pinnedTop,
+          top: top + firstRowTop,
           height: layout.pinnedHeight,
           opacity,
           borderRadius: radius.pinned,
