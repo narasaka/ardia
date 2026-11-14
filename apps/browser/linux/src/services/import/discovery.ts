@@ -3,6 +3,7 @@ import { BROWSERS, type Browser } from "./browsers";
 import { firefoxProfiles, firefoxSessionFile } from "./firefox";
 import { entries, join, readJson, type ImportHost } from "./host";
 import { hexColor, ImportFailure, type ImportKind, type Profile, type Source } from "./model";
+import { browserIcon } from "./icons";
 import { latestSessionFile } from "./sessions";
 import { attachArcSpaces, zenProfileSpaces } from "./sidebars";
 
@@ -111,6 +112,11 @@ export async function profilesOf(host: ImportHost, browser: Browser): Promise<Pr
   return browser.sidebar === "arc" ? attachArcSpaces(host, profiles) : profiles;
 }
 
+function iconOf(host: ImportHost, browser: Browser): { iconPath?: string } {
+  const icon = browserIcon(host.home, browser.icons);
+  return icon ? { iconPath: icon } : {};
+}
+
 export async function listSources(host: ImportHost): Promise<Source[]> {
   const found = await Promise.all(
     BROWSERS.map(async (browser): Promise<Source | null> => {
@@ -120,6 +126,7 @@ export async function listSources(host: ImportHost): Promise<Source[]> {
         id: browser.id,
         name: browser.name,
         family: browser.family,
+        ...iconOf(host, browser),
         requiresExport: false,
         needsKeychain: false,
         needsFullDiskAccess: false,
