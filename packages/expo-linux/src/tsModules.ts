@@ -2,7 +2,7 @@ import { linuxFocus } from "./focus";
 import { linuxInlineCompletion } from "./inlineCompletion";
 import { devPagerState, pagerState, selectPager, stepPager, switchPager } from "./web/Pager";
 import { watchSidebarEdge } from "./web/motion/sidebarEdge";
-import { animateWindowClose, closeWindow, focusWindow, openWindow } from "./windows/appWindows";
+import { animateWindowClose, closeWindow, focusWindow, openWindow, setWindowTitle } from "./windows/appWindows";
 
 type Call = (...values: unknown[]) => unknown;
 
@@ -28,6 +28,7 @@ export const aroundMain: Record<string, Record<string, (main: Call | null) => un
   ArdiaAppWindows: {
     closeWindow: (main) => (id: string) => closeWindow(id, main),
     focusWindow: () => (id: string) => focusWindow(id),
+    setWindowTitle: (main) => (id: string, title: string) => setWindowTitle(id, title, main),
   },
   ArdiaFocus: {
     claimFocus: () => linuxFocus.claimFocus,

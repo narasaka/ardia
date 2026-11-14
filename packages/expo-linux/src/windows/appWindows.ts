@@ -162,6 +162,12 @@ export async function closeWindow(id: string, closeInMain: ((id: string) => unkn
   else entry?.realm.close();
 }
 
+export async function setWindowTitle(id: string, title: string, setInMain: ((id: string, title: string) => unknown) | null): Promise<void> {
+  const doc = appWindowDocument(id);
+  if (doc) doc.title = title || "Ardia";
+  await setInMain?.(id, title);
+}
+
 export async function animateWindowClose(id: string): Promise<void> {
   const entry = mounted.get(id);
   if (!entry || entry.realm.closed) return;

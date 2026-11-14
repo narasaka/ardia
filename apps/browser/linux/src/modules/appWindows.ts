@@ -34,23 +34,25 @@ let drag: { id: string; grab: { x: number; y: number }; timer: ReturnType<typeof
 const windowEvent = (event: WindowEvent) => emit(MODULE, "onWindowEvent", event);
 const isBrowserKind = (kind: Kind | undefined) => kind === "browser" || kind === "small";
 
-const frameOf = (bounds: Rectangle): Frame => [bounds.x, bounds.y, bounds.width, bounds.height];
+const flipHeight = () => screen.getPrimaryDisplay().bounds.height;
+const frameOf = (bounds: Rectangle): Frame => [bounds.x, flipHeight() - (bounds.y + bounds.height), bounds.width, bounds.height];
+const boundsOf = (frame: Frame): Rectangle => ({ x: frame[0], y: flipHeight() - (frame[1] + frame[3]), width: frame[2], height: frame[3] });
 
 function placement(id: string, kind: Kind, options: OpenOptions): Rectangle {
-  const frame = options.frame;
+  const asked = options.frame && options.frame[2] > 0 && options.frame[3] > 0 ? boundsOf(options.frame) : null;
   const sizes = SIZES[kind];
-  if (frame && frame[2] > 0 && frame[3] > 0) {
-    const area = screen.getDisplayMatching({ x: frame[0], y: frame[1], width: frame[2], height: frame[3] }).workArea;
-    const width = Math.min(Math.max(frame[2], sizes.minWidth), area.width);
-    const height = Math.min(Math.max(frame[3], sizes.minHeight), area.height);
-    const x = Math.max(area.x, Math.min(frame[0], area.x + area.width - width));
-    const y = Math.max(area.y, Math.min(frame[1], area.y + area.height - height));
+  if (asked) {
+    const area = screen.getDisplayMatching(asked).workArea;
+    const width = Math.min(Math.max(asked.width, sizes.minWidth), area.width);
+    const height = Math.min(Math.max(asked.height, sizes.minHeight), area.height);
+    const x = Math.max(area.x, Math.min(asked.x, area.x + area.width - width));
+    const y = Math.max(area.y, Math.min(asked.y, area.y + area.height - height));
     return { x, y, width, height };
   }
   const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
-  const asked = kind === "small" && options.size ? { width: options.size[0], height: options.size[1] } : sizes;
-  const width = Math.min(asked.width, area.width);
-  const height = Math.min(asked.height, area.height);
+  const size = kind === "small" && options.size ? { width: options.size[0], height: options.size[1] } : sizes;
+  const width = Math.min(size.width, area.width);
+  const height = Math.min(size.height, area.height);
   let x = area.x + Math.round((area.width - width) / 2);
   let y = area.y + Math.round((area.height - height) / 2);
   const previous = kind === "browser" && lastBrowser && lastBrowser !== id ? appWindow(lastBrowser) : undefined;
@@ -254,7 +256,7 @@ defineModule(MODULE, {
     debugWindowState: (id: string) => {
       const window = appWindow(id);
       if (!window || window.isDestroyed()) return null;
-      return { visible: window.isVisible(), minimized: window.isMinimized(), maximized: window.isMaximized(), fullScreen: window.isFullScreen(), focused: window.isFocused(), frame: frameOf(window.getBounds()) };
+      return { visible: window.isVisible(), minimized: window.isMinimized(), maximized: window.isMaximized(), fullScreen: window.isFullScreen(), focused: window.isFocused(), frame: frameOf(window.getBounds()), bounds: window.getBounds() };
     },
   },
   async: {
