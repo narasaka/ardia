@@ -45,6 +45,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Check the launch script's process tree
+        shell: pwsh
+        run: scripts/windows/process-tree.test.ps1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -60,6 +63,7 @@ jobs:
         working-directory: apps/browser
         run: npx react-native run-windows --release --arch x64 --no-launch --no-deploy --no-packager --no-telemetry --logging
       - name: Launch it
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App apps/browser/windows/x64/Release/Ardia.exe -Out "${{ runner.temp }}/launch"
       - name: Tour
@@ -107,6 +111,7 @@ jobs:
           retention-days: 14
       - name: Launch it with the engine
         if: ${{ !cancelled() && steps.engine.outcome == 'success' }}
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App "${{ runner.temp }}/Ardia/Ardia.exe" -Out "${{ runner.temp }}/launch-engine"
       - name: Tour the pages
@@ -214,6 +219,7 @@ jobs:
           & $msbuild windows\Ardia.sln /nologo /restore /p:RestorePackagesConfig=true /p:Configuration=Release /p:Platform=ARM64 /p:AppxBundle=Never /p:RunAutolinkCheck=false /p:PreferredToolArchitecture=arm64 "/clp:NoSummary;NoItemAndPropertyList;Verbosity=normal" "/bl:windows\msbuild_arm64_build.binlog" "/flp1:errorsonly;logfile=windows\msbuild_arm64_build.err" "/flp2:warningsonly;logfile=windows\msbuild_arm64_build.wrn"
           exit $LASTEXITCODE
       - name: Launch it
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App apps/browser/windows/ARM64/Release/Ardia.exe -Out "${{ runner.temp }}/launch" -NoInput
       - name: Host manifest
@@ -253,6 +259,7 @@ jobs:
           retention-days: 14
       - name: Launch it with the engine
         if: ${{ !cancelled() && steps.engine.outcome == 'success' }}
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App "${{ runner.temp }}/Ardia/Ardia.exe" -Out "${{ runner.temp }}/launch-engine" -NoInput
       - if: ${{ !cancelled() }}
