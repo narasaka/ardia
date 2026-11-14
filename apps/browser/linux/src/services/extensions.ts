@@ -7,6 +7,7 @@ import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { defineModule } from "../bridge";
 import { defineDomain, emitDomainEvent } from "../engine/domains";
+import { allGuests, onGuestAttached, windowOf, type Guest } from "../engine/guests";
 import { isBackground } from "../paths";
 import { unpackCrxFile } from "./crx";
 import { database, pref, setPref } from "./database";
@@ -240,11 +241,6 @@ function remember(profile: string, id: string, entry: Entry) {
 
 const pendingAdopts = new Map<Session, ((tab: [WebContents, BrowserWindow]) => void)[]>();
 
-function hostWindowOf(contents: WebContents): BrowserWindow | null {
-  const host = contents.hostWebContents;
-  return host ? BrowserWindow.fromWebContents(host) : null;
-}
-
 function setUp(session: Session, profile: string) {
   if (isPrivateProfile(profile) || contexts.has(profile)) return;
   const chrome = new ElectronChromeExtensions({
@@ -321,10 +317,12 @@ function contextFor(profile: string) {
 
 onProfileSession((session, profile) => setUp(session, profile));
 
-function trackTab(contents: WebContents) {
+function trackTab(guest: Guest) {
+  const { contents } = guest;
   const context = [...contexts.values()].find((entry) => entry.session === contents.session);
-  const window = hostWindowOf(contents);
-  if (!context || !window) return;
+  const window = windowOf(guest);
+  if (!context || !window || tracked.has(contents)) return;
+  tracked.add(contents);
   context.chrome.addTab(contents, window);
   const adopt = pendingAdopts.get(contents.session)?.shift();
   if (adopt) adopt([contents, window]);
@@ -338,10 +336,11 @@ function trackTab(contents: WebContents) {
   });
 }
 
-app.on("web-contents-created", (_event, contents) => {
-  if (contents.getType() === "webview") return;
-  contents.on("did-attach-webview", (_attach, guest) => trackTab(guest));
-});
+const tracked = new WeakSet<WebContents>();
+
+onGuestAttached(trackTab);
+
+const guestOfTab = (tabId: unknown) => (typeof tabId === "string" && tabId ? allGuests().find((guest) => guest.tabId === tabId) : undefined);
 
 function inspect(path: string) {
   const manifest = readManifest(path);
@@ -478,10 +477,13 @@ defineDomain("extensions", {
     resolvePrompt?.(args.accepted === true);
     return null;
   },
-  actionStates: (args, profile) => actionStates(profile, null, Array.isArray(args.ids) ? strings(args.ids) : []),
+  actionStates: (args, profile) => {
+    const guest = guestOfTab(args.tabId);
+    return actionStates(guest?.profile ?? profile, guest?.contents.id ?? null, Array.isArray(args.ids) ? strings(args.ids) : []);
+  },
   sidePanelUrl: (args, profile) => {
     const extensionId = typeof args.extensionId === "string" ? args.extensionId : "";
-    const extension = contexts.get(profile)?.session.extensions.getExtension(extensionId);
+    const extension = contexts.get(guestOfTab(args.tabId)?.profile ?? profile)?.session.extensions.getExtension(extensionId);
     const path = (extension?.manifest as Manifest | undefined)?.side_panel?.default_path;
     return path ? `chrome-extension://${extensionId}/${path.replace(/^\//, "")}` : null;
   },

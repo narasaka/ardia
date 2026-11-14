@@ -1,5 +1,6 @@
-import { session, type Session } from "electron";
+import type { Session } from "electron";
 import { join } from "node:path";
+import { pageSession } from "../engine/sessions";
 import { dataDirectory } from "../paths";
 
 const PRIVATE_PREFIX = "incognito";
@@ -28,22 +29,9 @@ export function profileDirectory(profile: string): string {
   return join(profilesDirectory(), name);
 }
 
-const PERSISTENT_PARTITION = "persist:ardia";
-const PRIVATE_PARTITION = "ardia-private";
+export { partitionOf as partitionFor, profileOfPartition } from "../engine/partitions";
 
-export function partitionFor(profile: string): string {
-  if (isPrivateProfile(profile)) return `${PRIVATE_PARTITION}-${encodeURIComponent(profile)}`;
-  return profile ? `${PERSISTENT_PARTITION}-${encodeURIComponent(profile)}` : PERSISTENT_PARTITION;
-}
-
-export const sessionFor = (profile: string): Session => session.fromPartition(partitionFor(profile));
-
-export function profileOfPartition(partition: string): string | null {
-  if (partition === PERSISTENT_PARTITION) return "";
-  if (partition.startsWith(`${PERSISTENT_PARTITION}-`)) return decodeURIComponent(partition.slice(PERSISTENT_PARTITION.length + 1));
-  if (partition.startsWith(`${PRIVATE_PARTITION}-`)) return decodeURIComponent(partition.slice(PRIVATE_PARTITION.length + 1));
-  return null;
-}
+export const sessionFor = (profile: string): Session => pageSession(profile);
 
 export function engineError(message: string): Error {
   return Object.assign(new Error(message), { code: "ERR_ENGINE" });

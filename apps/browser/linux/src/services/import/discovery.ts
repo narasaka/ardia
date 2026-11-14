@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { BROWSERS, type Browser } from "./browsers";
 import { firefoxProfiles, firefoxSessionFile } from "./firefox";
 import { entries, join, readJson, type ImportHost } from "./host";
@@ -9,7 +10,10 @@ type Info = Record<string, unknown>;
 
 const PROFILE_MARKERS = ["Preferences", "Bookmarks", "History", "Login Data"];
 
-export const dataDirectory = (host: ImportHost, browser: Browser) => join(host.home, browser.path);
+export function dataDirectory(host: ImportHost, browser: Browser): string {
+  const candidates = browser.paths.map((path) => join(host.home, path));
+  return candidates.find((path) => existsSync(path)) ?? candidates[0]!;
+}
 
 const has = (names: Set<string>, ...wanted: string[]) => wanted.some((n) => names.has(n.toLowerCase()));
 
