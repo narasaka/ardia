@@ -77,6 +77,17 @@ jobs:
           dpkg-deb -x "$deb" "$RUNNER_TEMP/deb-root"
           grep -q '^StartupWMClass=ardia$' "$RUNNER_TEMP"/deb-root/usr/share/applications/ardia.desktop
           grep -q 'x-scheme-handler/https' "$RUNNER_TEMP"/deb-root/usr/share/applications/ardia.desktop
+      - name: Install the .deb and launch it sandboxed
+        timeout-minutes: 6
+        run: |
+          sudo apt-get install -y -qq "$PWD/$(ls apps/browser/linux/dist/*.deb)"
+          stat -c '%U %a %n' /opt/Ardia/chrome-sandbox | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$(stat -c '%U %a' /opt/Ardia/chrome-sandbox)" = "root 4755" ]
+          xvfb-run -a -s "-screen 0 1600x1000x24" scripts/linux/launch-smoke "$RUNNER_TEMP/smoke-deb" --port 9392 --app /opt/Ardia
+          head -1 "$RUNNER_TEMP/smoke-deb/data/launch.log" | tee -a "$GITHUB_STEP_SUMMARY"
+          grep -q "launch sandboxed with" "$RUNNER_TEMP/smoke-deb/data/launch.log"
+          ps -eo args | grep -c -- '--type=zygote' || true
+          sudo apt-get remove -y -qq ardia
       - name: Screenshots in the summary
         if: ${{ !cancelled() }}
         run: |
