@@ -2,6 +2,7 @@ import "./app";
 import "./appWindows";
 import "./ardiaApp";
 import "./config";
+import "./dev";
 import "./dialogs";
 import "./documents";
 import "./focus";
