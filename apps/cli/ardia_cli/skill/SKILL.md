@@ -13,8 +13,8 @@ turn that re-reads all output before it: do the most per call, print the least. 
 ## Start
 
 ```sh
-ardia browse open <url>     # a task that names a site
-ardia browse snapshot -i    # a task about the user's own page
+ardia browse open <url>  # a task that names a site
+ardia browse batch "tab active" "snapshot -i"  # the user's own page
 ```
 
 `snapshot -i` lists what you can act on with refs (`textbox "Name" [ref=e11]`). If it starts with
