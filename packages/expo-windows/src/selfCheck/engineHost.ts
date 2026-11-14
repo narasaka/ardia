@@ -1,17 +1,16 @@
 import type { DomainModule } from "@ardia/ardiacore";
-import type { AppNative, SystemNative, WindowsNative } from "@ardia/shell";
+import type { AppNative, WindowsNative } from "@ardia/shell";
 import { TurboModuleRegistry } from "react-native";
 import type { AppWindowsModule, EngineHostModule } from "../nativeModuleTypes";
-import { engineAvailable, engineCallJson, hostCall, onEngineTopic, profileDataFolder, removeProfileFolder } from "../engine/host";
-import { pngImage } from "../engine/domains/favicons";
-import { profileFolder } from "../engine/domains/profiles";
+import { engineAvailable, engineCallJson, hostCall, onEngineTopic, removeProfileFolder } from "../engine/host";
 import { requireNativeModule } from "../modules";
 import { expectEqual, expectTrue, type Check } from "./check";
+import { comparable } from "./engineCalls";
 import { fieldFocusedIn } from "../appKeyboard";
 import { textFocusForCheck } from "../textFocus";
 
 type TabEvent = { key?: unknown; name?: unknown; data?: { title?: unknown; isLoading?: unknown } };
-type ListedTab = { key: string; title: string; shown: boolean; windowVisible: boolean; width: number; height: number; session?: number };
+type ListedTab = { key: string; tab?: number; title: string; shown: boolean; windowVisible: boolean; width: number; height: number; session?: number };
 
 const PAGE_KEY = "self-check-page";
 const OTHER_WINDOW = "self-check-other-window";
@@ -33,7 +32,6 @@ const engineHost = () => {
 };
 
 const windows = () => requireNativeModule<Pick<WindowsNative, "windowIds">>("ArdiaAppWindows");
-const system = () => requireNativeModule<Pick<SystemNative, "fileExists">>("ArdiaSystem");
 const launchData = () => requireNativeModule<Pick<AppNative, "launchConfig">>("ArdiaApp").launchConfig().dataDirectory;
 const domain = (name: string) => requireNativeModule<Pick<DomainModule, "call">>(name);
 
@@ -41,27 +39,7 @@ const SECOND_PAGE_KEY = "self-check-second-page";
 const PRIVATE_FIRST = "incognito:self-check-first@";
 const PRIVATE_SECOND = "incognito:self-check-second@";
 const PRIVATE_NEXT = "incognito:self-check-next@";
-const NEVER_LOADED = "self-check-never-loaded";
-const LOADED = "self-check-loaded";
-const STUCK = "self-check-stuck";
-const SEEDED_ZOOM_HOST = "selfcheck.example";
 
-const comparable = (path: unknown) => String(path).replace(/\//g, "\\").replace(/\\+$/, "").toLowerCase();
-
-const folderOf = (profile: string) => {
-  const folder = profileFolder(profile);
-  expectTrue(folder, `${profile} has no folder name`);
-  return folder;
-};
-const ONE_PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-const userDataDir = async () => {
-  const { userDataDir: folder } = await hostCall<{ userDataDir?: unknown }>("host.info");
-  expectTrue(typeof folder === "string" && folder.length > 0, "host.info has no user data folder");
-  return folder;
-};
-
-const deleteData = async (profile: string) => JSON.parse(await domain("ArdiaProfiles").call("deleteData", profile, JSON.stringify({ profile }))) as { remaining?: unknown };
 
 const expectNoEngine = (reply: unknown, what: string) => {
   expectEqual(typeof reply, "string", `the type of ${what}'s reply`);
@@ -122,24 +100,6 @@ const withoutEngine: Check[] = [
 ];
 
 const withEngine: Check[] = [
-  {
-    name: "engine: the host answers with its Chromium version",
-    async run() {
-      const info = await hostCall<{ chromium?: unknown; userDataDir?: unknown }>("host.info");
-      expectTrue(typeof info.chromium === "string" && /^\d+\.\d+\.\d+\.\d+$/.test(info.chromium), `host.info said ${JSON.stringify(info)}`);
-      expectTrue(typeof info.userDataDir === "string" && info.userDataDir.length > 0, "host.info has no user data folder");
-    },
-  },
-  {
-    name: "engine: an unknown host verb is refused",
-    async run() {
-      const refused = await hostCall("no.such.verb").then(
-        () => false,
-        (error: unknown) => String((error as Error).message).includes("unknown verb"),
-      );
-      expectTrue(refused, "an unknown verb was not refused");
-    },
-  },
   {
     name: "engine: a tab loads a page and reports its title",
     async run() {
@@ -280,83 +240,6 @@ const withEngine: Check[] = [
     },
   },
   {
-    name: "engine: engine.info answers from the host with its Chromium version and data folder",
-    async run() {
-      const host = await hostCall<{ chromium?: unknown; userDataDir?: unknown }>("host.info");
-      const info = JSON.parse(await domain("ArdiaEngine").call("info", "", "{}")) as { chromiumVersion?: unknown; dataDirectory?: unknown; engine?: unknown };
-      expectEqual({ chromiumVersion: info.chromiumVersion, dataDirectory: info.dataDirectory, engine: info.engine }, { chromiumVersion: host.chromium, dataDirectory: host.userDataDir, engine: "ardiacore" }, "engine.info");
-    },
-  },
-  {
-    name: "engine: native and the engine agree where Chromium keeps profiles",
-    async run() {
-      expectEqual(comparable(profileDataFolder()), comparable(await userDataDir()), "profileDataFolder() against host.info");
-    },
-  },
-  {
-    name: "engine: deleting a profile the engine never loaded leaves no folder behind",
-    async run() {
-      const folder = `${await userDataDir()}\\${folderOf(NEVER_LOADED)}`;
-      expectEqual(await deleteData(NEVER_LOADED), { remaining: [] }, "deleteData of a profile never loaded");
-      expectEqual(system().fileExists(folder), false, `${folder} exists`);
-    },
-  },
-  {
-    name: "engine: deleting a loaded profile clears its data and keeps the folder until the engine lets go",
-    async run() {
-      const loaded = JSON.parse(await engineCallJson("ac_bookmarks_tree", LOADED, "{}")) as { error?: unknown };
-      expectEqual(loaded.error, undefined, "loading the profile");
-      const folder = `${await userDataDir()}\\${folderOf(LOADED)}`;
-      expectTrue(system().fileExists(folder), `${folder} was not made`);
-      const { remaining } = await deleteData(LOADED);
-      expectTrue(Array.isArray(remaining) && remaining.length === 1, `deleteData of a loaded profile left ${JSON.stringify(remaining)}`);
-      expectTrue(system().fileExists(folder), `${folder} went away while the engine held it`);
-      expectEqual(await removeProfileFolder(folderOf(LOADED)), "inUse", "removing the held folder");
-    },
-  },
-  {
-    name: "engine: an earlier removal that is still left is reported, not taken as done",
-    async run() {
-      const leftover = `${await userDataDir()}\\${folderOf(STUCK)} (removing)`;
-      expectTrue(system().fileExists(leftover), `the launch left no held ${leftover}`);
-      expectEqual(await removeProfileFolder(folderOf(STUCK)), "partial", "removing a profile whose earlier removal is held open");
-      expectEqual((await deleteData(STUCK)).remaining, ["files (partial)"], "what deleteData reports");
-    },
-  },
-  {
-    name: "engine: deleting a private profile's data answers as on the Mac",
-    async run() {
-      expectEqual(await deleteData(`incognito1@${LOADED}`), { remaining: [] }, "a private profile");
-    },
-  },
-  {
-    name: "engine: deleting the original profile's data clears it step by step",
-    async run() {
-      const seeded = JSON.parse(await engineCallJson("ac_zoom_set", "", JSON.stringify({ host: SEEDED_ZOOM_HOST, level: 1 }))) as { error?: unknown };
-      expectEqual(seeded.error, undefined, "seeding a zoom level");
-      expectEqual(await deleteData(""), { remaining: [] }, "deleting the original profile's data");
-      const zooms = JSON.parse(await engineCallJson("ac_zoom_list", "", "{}")) as { levels?: Record<string, unknown> };
-      expectEqual(Object.keys(zooms.levels ?? {}), [], "zoom levels left");
-    },
-  },
-  {
-    name: "engine: favicons.fetch answers a PNG with its size",
-    async run() {
-      const favicons = domain("ArdiaFavicons");
-      const image = JSON.parse(await favicons.call("fetch", "", JSON.stringify({ url: `data:image/png;base64,${ONE_PIXEL_PNG}` })));
-      expectEqual(image, pngImage(ONE_PIXEL_PNG), "a PNG data address");
-      expectEqual(image?.width, 1, "its width");
-      expectEqual(JSON.parse(await favicons.call("fetch", "", JSON.stringify({ url: "file:///C:/icon.png" }))), null, "a file address");
-    },
-  },
-  {
-    name: "engine: an unknown engine call is refused",
-    async run() {
-      const reply = JSON.parse(await engineCallJson("ac_no_such_call", "", "{}")) as { error?: unknown };
-      expectEqual(reply.error, "unknown call", "the reply's error");
-    },
-  },
-  {
     name: "engine: private windows of a profile share one session until the last is released, then the next gets a new one",
     async run() {
       const windowId = await firstWindow();
@@ -384,6 +267,99 @@ const withEngine: Check[] = [
       expectEqual(reopened, false, "a released private window opening a tab again");
       await hostCall("tab.close", { key: PRIVATE_NEXT });
       expectEqual(await profiles.call("release", PRIVATE_NEXT, "{}"), "null", `releasing ${PRIVATE_NEXT}`);
+    },
+  },
+  {
+    name: "engine: a page's link to another app reaches the app as an externalApp ask, and externalAppAlive answers once",
+    async run() {
+      const asked = new Promise<Record<string, unknown>>((resolve, reject) => {
+        const watching = onEngineTopic("tab", (event: { key?: unknown; name?: unknown; data?: unknown }) => {
+          if (event.key !== PAGE_KEY || event.name !== "externalApp") return;
+          clearTimeout(deadline);
+          watching.remove();
+          resolve((event.data ?? {}) as Record<string, unknown>);
+        });
+        const deadline = setTimeout(() => {
+          watching.remove();
+          reject(new Error("no externalApp event within 10000 ms"));
+        }, 10000);
+      });
+      await hostCall("tab.call", { key: PAGE_KEY, method: "executeJavaScript", code: 'location.href = "ardia-self-check-link:hello"' });
+      const ask = await asked;
+      expectEqual({ url: ask.url, origin: ask.origin, offTheRecord: ask.offTheRecord }, { url: "ardia-self-check-link:hello", origin: null, offTheRecord: false }, "the externalApp ask");
+      expectTrue(typeof ask.id === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(ask.id), `the ask's id is ${JSON.stringify(ask.id)}`);
+      expectEqual(typeof ask.userGesture, "boolean", "the ask's userGesture");
+      const first = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: ask.id });
+      const second = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: ask.id });
+      const unknown = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: "x0" });
+      expectEqual({ first: first.alive, second: second.alive, unknown: unknown.alive }, { first: true, second: false, unknown: false }, "externalAppAlive");
+    },
+  },
+  {
+    name: "engine: the engine keeps only a page's newest asks to open another app, and forgets one the app dropped",
+    async run() {
+      const ids: string[] = [];
+      const watching = onEngineTopic("tab", (event: { key?: unknown; name?: unknown; data?: { id?: unknown } }) => {
+        if (event.key === PAGE_KEY && event.name === "externalApp" && typeof event.data?.id === "string") ids.push(event.data.id);
+      });
+      try {
+        for (let n = 0; n < 12; n++) {
+          await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: `ardia-self-check-link:ask-${n}`, userInitiated: true });
+          const by = Date.now() + 5000;
+          while (ids.length <= n && Date.now() < by) await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      } finally {
+        watching.remove();
+      }
+      expectEqual(ids.length, 12, "externalApp asks from 12 typed links");
+      const alive = async (id: string) => (await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id })).alive;
+      expectEqual(await alive(ids[0]!), false, "the oldest of 12 asks nobody answered");
+      const newest = ids[11]!;
+      const dropped = ids[10]!;
+      await hostCall("tab.call", { key: PAGE_KEY, method: "externalAppForget", id: dropped });
+      expectEqual({ dropped: await alive(dropped), newest: await alive(newest) }, { dropped: false, newest: true }, "an ask the app dropped, and the newest ask");
+    },
+  },
+  {
+    name: "engine: a key closed while its page still runs its unload handlers can be used again at once",
+    async run() {
+      const windowId = await firstWindow();
+      const key = "self-check-busy-unload";
+      const busy = 'data:text/html,<title>busy unload</title><script>addEventListener("beforeunload", () => { const t = Date.now(); while (Date.now() - t < 3000) {} })</script>';
+      const listed = async () => (await hostCall<{ tabs: ListedTab[] }>("tabs.list")).tabs.find((tab) => tab.key === key);
+      await hostCall("tab.create", { key, url: busy, profile: "" }, windowId);
+      const loadedBy = Date.now() + LOAD_MS;
+      while ((await listed())?.title !== "busy unload" && Date.now() < loadedBy) await new Promise((resolve) => setTimeout(resolve, 200));
+      expectEqual((await listed())?.title, "busy unload", "the busy page's title");
+      await hostCall("tab.close", { key });
+      const made = await hostCall<{ tab?: unknown }>("tab.create", { key, url: PAGE_URL, profile: "" }, windowId);
+      expectTrue(typeof made.tab === "number" && made.tab > 0, `tab.create again said ${JSON.stringify(made)}`);
+      await new Promise((resolve) => setTimeout(resolve, 6000));
+      const again = await listed();
+      expectEqual(again?.tab, made.tab, "the tab listed under the reused key after the old page's deadlines");
+      await hostCall("tab.call", { key, method: "navigationEntries" });
+      await hostCall("tab.close", { key });
+    },
+  },
+  {
+    name: "engine: a tab closed while its page runs its unload handlers can't be adopted or discarded",
+    async run() {
+      const windowId = await firstWindow();
+      const key = "self-check-closing-adopt";
+      const busy = 'data:text/html,<title>busy close</title><script>addEventListener("beforeunload", () => { const t = Date.now(); while (Date.now() - t < 3000) {} })</script>';
+      const listed = async (name: string) => (await hostCall<{ tabs: ListedTab[] }>("tabs.list")).tabs.find((tab) => tab.key === name);
+      await hostCall("tab.create", { key, url: busy, profile: "" }, windowId);
+      const loadedBy = Date.now() + LOAD_MS;
+      while ((await listed(key))?.title !== "busy close" && Date.now() < loadedBy) await new Promise((resolve) => setTimeout(resolve, 200));
+      const id = (await listed(key))?.tab;
+      expectTrue(typeof id === "number" && id > 0, `the busy page's tab id is ${String(id)}`);
+      await hostCall("tab.close", { key });
+      const adopted = await hostCall("tab.create", { key: `${key}-adopted`, adopt: `ardiacore:${id}`, profile: "" }, windowId).then(
+        () => true,
+        () => false,
+      );
+      if (adopted) await hostCall("tab.close", { key: `${key}-adopted` });
+      expectEqual(adopted, false, "adopting a tab that is closing");
     },
   },
   {

@@ -83,7 +83,7 @@ what differs; the Mac's list is `docs/dia-feature-parity.md`. Rows marked "hidde
 | Downloads (download, panel, Ctrl+J) | Works: the panel opens for a new download and lists it; Ctrl+J opens it | #1519 |
 | History (Ctrl+H), Clear Browsing Data (Ctrl+Shift+Del) | Works | |
 | Bookmarks (Ctrl+D, Ctrl+Shift+O) | Works | |
-| mailto and other app links | Does nothing until the engine announces the request (no prompt, no launch) | #1425 (engine), #1590 |
+| mailto and other app links | Works: the app's prompt, then the handler (`mailto` opens the mail app without a prompt, as Chromium and the Mac allow it by default) | #1590, #1425 |
 | Translate | Not offered | #1520 |
 | Network error page | Works (Chromium's) | |
 | DevTools (F12), Task Manager (Shift+Esc) | Works (Chromium's) | |
@@ -320,10 +320,11 @@ is plain Chromium.
 
 - `//ardia/win` (`scripts/windows/engine/src/ardia/win`, copied into the tree by `series_win.py`) is the engine's side.
   It starts Chromium with no window of its own, turns the launch variables into switches as the Mac's launcher does
-  (`ARDIA_DATA_DIR` keeps Chromium's data in `<dir>\Chromium`; `ARDIA_REMOTE_DEBUGGING_PORT` only works with it; a
-  remote debugging switch on the command line is dropped), loads the app's library once the browser has started, and
-  hands it the API in `EngineApi.h`: `hostCall(verb, json, window)`, `engineCall(name, profile, json)` and one event
-  sink. Chromium's message loop offers each message to the app first, except messages for Chromium's own windows.
+  (`ARDIA_DATA_DIR` keeps Chromium's data in `<dir>\Chromium`; `ARDIA_REMOTE_DEBUGGING_PORT`, `ARDIA_TEST` and
+  `ARDIA_TRACE` only count in a test instance, see Test instances; a remote debugging switch or an Ardia test switch on
+  the command line is dropped), loads the app's library once the browser has started, and hands it the API in
+  `EngineApi.h`: `hostCall(verb, json, window)`, `engineCall(name, profile, json)`, one event sink and
+  `testGateRefusal()`, the engine's test-instance decision. Chromium's message loop offers each message to the app first, except messages for Chromium's own windows.
 - Every normal browser window Chromium has is hosted: page only, with no frame, tab strip, toolbar, rounded page frame
   or shortcuts of its own (the `chromium-win-hosted-*` patches), and each shows one page: its active tab. Each is
   a borderless top-level window owned by the app's window, placed over the page's view: it stays above its owner, hides
@@ -336,6 +337,12 @@ is plain Chromium.
   rest of the Mac tab's methods, `tab_calls.cc`), `tab.discard`, `tabs.list`, `host.info`, `app.quit`. Events come as
   the topic `tab` with a key, a name and data (navigation, progress, favicon, find, zoom, security, media, pagePress,
   windowClose and more), and `tab.opened` for a tab Chromium made itself, with who opened it.
+- `tab.close` closes as the Mac's `TabBridge::CloseAfterUnloadHandlers` does: a page with `beforeunload` or `unload`
+  handlers gets `beforeunload` with its prompt cancelled (no "Leave site?" is ever shown for a tab the app closed), then
+  its unload handlers whatever it answered, each step with 2 seconds, and then the host deletes the tab
+  (`Host::DeleteClosedTab`, kept for Reopen Closed Tab unless it only ever showed its opening blank page). While
+  quitting, only the unload step runs. The closed tab gives up its key when `tab.close` answers: nothing it does
+  during its deadlines reaches the app, and the app may open a new tab under the same key at once.
 - The `ac_*` calls of `engine/chromium` build on Windows from the same sources: `series_win.py` makes the Windows
   build file from the Mac one, applies `ardia-layer-win.patch` (paths from UTF-8, a Mac-only string, and Windows absolute paths, a drive letter
   or UNC, accepted where the Mac asks for a leading `/`: extension installs, bookmark and password exports) and swaps in
@@ -529,7 +536,6 @@ is plain Chromium.
 | `media.devShowBluetoothChooser`, `media.devChooserEvents` | Default | Mac test hooks. |
 | `passwords.autofillEnabled`, `passwords.setAutofillEnabled` | Engine | The profile's `credentials_enable_service` pref, as for autofill. Today Settings › Passwords' offer-to-save toggle reads off and changes nothing. |
 | `permissions.resolve` | Engine | Permission prompts drawn by the app; Chromium's own prompt shows today. |
-| `externalApp` tab event (no verb) | Engine | The app answers `permissions.resolveExternalApp`, `externalAppAllowances` and `removeExternalAppAllowance` (`domains/externalApps.ts`, `ArdiaExternalApps`), but the Windows engine never raises the request: the `external protocol dialog` hook that `engine/ardiacore/apply.sh` adds to Chromium's `ExternalProtocolHandler` is not in the Windows series. The engine also needs the `externalAppAlive` page call (`tab.call`, `{ id }`, answers `true` while the asking document is alive, like the Mac's `ResolveExternalApp`): the app opens nothing until it answers `true`. The payload and the call are on #1425. |
 | `permissions.devExternalLaunches` | Default | Mac test hook. |
 | `profiles.loaded` | Engine | The profiles the engine has loaded, plus the `profiles.loaded` event. Today the call fails and the app counts every profile as open, as with lazy loading off. |
 | Profile folder names (no verb) | App | The engine names a profile's folder `Ardia ` plus its id, with lowercase letters, digits and `-` kept and every other byte written `_` and two lowercase hex digits (`profiles.cc`), so each name has its own folder even on a case-insensitive disk and Ardia's own ids (`p-<base36>-<base36>`) keep the folder they always had. `profiles.deleteData` still maps only ids of that shape and refuses the rest; it could map the escape too. |
@@ -562,7 +568,16 @@ Answered on Windows since the engine took Windows paths (`windows-engine-2026111
 `unpacked.ts` and `systemState.ts`, with the dialogs, file reads and power reading passed in as the domain engine's
 `desktop` (`domains/desktop.ts`):
 
-- Links to other apps: the engine's `externalApp` tab event (once it sends one, #1425) goes to `domains/externalApps.ts`.
+- Links to other apps: `chromium-win-external-protocol-dialog.patch` gives Chromium's `ExternalProtocolHandler` the
+  hook the Mac's `apply.sh` adds (`g_ardia_win_external_protocol_dialog`, called after Chromium's own block state and
+  denied schemes, with the request's user gesture). For a tab the host keeps, `ardia/win/external_apps.cc` sends the
+  `externalApp` tab event (`id`, `url`, `origin` or null, `userGesture`, `offTheRecord`) to `domains/externalApps.ts`
+  and keeps the asking document. The `externalAppAlive` page call answers `{ alive: true }` once per request while
+  that document lives (a request with no page origin, from the browser or an extension, only needs its tab), as the
+  Mac's `ResolveExternalApp` checks. The engine keeps a page's 8 newest asks at most, and the app tells it
+  (`externalAppForget`) whenever it drops one without launching: a no, no handler, a closed page or a forgotten
+  profile. `mailto` never asks: Chromium allows it by default and opens the mail app itself,
+  as on the Mac.
   - **Describe:** `ArdiaExternalApps.describe` names the scheme's handler and draws its icon (`AssocQueryStringW` with
     `ASSOCSTR_FRIENDLYAPPNAME` and `ASSOCSTR_EXECUTABLE`, then `SystemShell::FileIcon`). A classic scheme under
     `Software\Classes` (how Zoom and Slack register) gets no name from `AssocQueryString` on Windows 11 build 26200,
@@ -775,7 +790,10 @@ Swift core wrote (`fixtures/windows-interop/mac`), and the self-check opens that
 ## Test instances
 
 `LaunchConfig.h` (`AppLaunch::Shared()`) reads the environment once at launch; `Paths.h` holds the one raw reader and
-the data folder, and `TestGate.h` decides whether this launch is a test instance. No other Windows native file reads
+the data folder. Whether this launch is a test instance is decided once, by the engine, before the app loads
+(`scripts/windows/engine/src/ardia/win/test_gate.cc`), and handed to the app through `EngineApi.h`'s
+`testGateRefusal()`, so the two can't disagree when the marker or a folder changes in between. `TestGate.h` holds the
+same rule for the app run without the engine (`ArdiaAppRun`). No other Windows native file reads
 the environment (`platform/windowsLaunchConfig.test.mjs` fails if one does). The one exception is the small
 `ArdiaLauncher`, which runs before the DLL loads and reads `ARDIA_BACKGROUND` only to keep a failed launch quiet.
 
@@ -811,8 +829,48 @@ the scratch instance makes a new one. Sync's `selfTest`, which seals and removes
 
 Outside a test instance the launch config drops `ARDIA_TEST`, `ARDIA_TRACE`, `ARDIA_CONFIG_DIR` and the test-only
 `ARDIA_INSTANCE` keys (`updateFeed`, `importSourceDir`, `importSafariHome`), and the launch log says once why. The other
-`ARDIA_INSTANCE` keys and `ARDIA_BACKGROUND` stay instance settings, as on the Mac. The engine reads its own
-switches before the app loads; its side of the rule is #1663.
+`ARDIA_INSTANCE` keys and `ARDIA_BACKGROUND` stay instance settings, as on the Mac.
+
+The engine applies the same decision to its own switches (`main.cc` `DecideTestGate`, before Chromium starts):
+
+- **Which process.** A launch counts as the browser process when its `--type` is missing or empty, as Chromium counts
+  it, so an empty `--type=` can't skip the gate.
+- **Which folder.** The gate judges the profile folder Chromium will really open: `install_static::GetUserDataDirectory()`,
+  which `chrome_elf` derives from the raw command line, policy and `ARDIA_DATA_DIR`. It must be `<ARDIA_DATA_DIR>\Chromium`,
+  compared by final path, so a `--user-data-dir` or a policy pointing anywhere else refuses the test instance. The
+  path string Chromium will open must also be the held folder's own path (its final path as a drive path), so an alias
+  that merely resolves to it (a junction, a short name, a mapped drive) is refused: an alias could be re-pointed after
+  the check.
+- **What a test instance gets.** `--remote-debugging-port` (with `remote-allow-origins=*`), `--ardia-test`,
+  `--ardia-trace` and `--ardia-test-instance`, which `ardiacore`'s gate reads in place of the Mac's signing check
+  (`series_win.py` `launch_switches_source()`). Those switches given on the command line are always dropped first.
+- **What everyone else loses.** Outside a test instance the engine drops the Mac's list of switches that open the
+  profile to an outsider (`--load-extension`, `--disable-web-security`, `--enable-automation`, the remote debugging and
+  proxy switches and the rest of `kSwitchesThatOpenTheProfile`), plus five Windows-only ones that start a chosen
+  program as a browser child or run children unsandboxed (`--browser-subprocess-path`, `--renderer-cmd-prefix`,
+  `--utility-cmd-prefix`, `--gpu-launcher`, `--no-sandbox`; nothing in the engine, CI or the probe passes them), and
+  unsets `SSLKEYLOGFILE`; if that variable can't be cleared the engine doesn't start. This happens before Chromium starts and
+  again after `chrome://flags` adds its switches. A second launch handed to the running instance only gives it its URLs
+  (`Relaunched`), and child processes only get switches the browser process still has. The launch log gets one
+  `engine 0 test gate:` line saying why, and `reauth=granted`, `keychain`, `safeStorageAnswer` and the other engine
+  test keys never count.
+- **The folders, held.** Once approved, the scratch folder and its `Chromium` folder are created if missing and held
+  open for the life of the process without delete sharing, then checked again through those handles; a folder held that
+  way can't be renamed away or swapped for a junction, and a folder that is itself a link is refused.
+
+What the marker does and doesn't protect: it marks a build CI tests, and only a build with it honours any of the above.
+The gate keeps test powers off the real profile's folder for an unmodified shipped build; it is not a boundary against
+someone who can write the app folder (who can add the marker, or replace `Ardia.exe` or `ArdiaApp.dll`) or who can
+already read the real profile. For example, in a marker build a scratch folder whose `Default` profile folder is a
+junction to the real profile's passes the gate; that gives nothing beyond copying the real profile into a scratch
+folder, which a test instance is allowed to open.
+
+`launch-smoke.ps1` checks it with the engine. With no marker, a relative folder, the real profile folder, a junction to
+it, an empty `--type=` on the real profile, an approved folder while `--user-data-dir` points at the real profile or at a
+junction to the approved folder, and `--load-extension` with debugging switches outside a test instance, the engine must
+log its refusal (so it did start), leave the port closed, and (for the extension) never run it, while the same extension
+does run in a test instance. A scratch folder with the marker must get both powers, with the port answering
+`/json/version`.
 
 ## Checks
 
@@ -881,8 +939,6 @@ App side, an agent can do these now:
 7. Picture in picture: the Mac's stash, corners and mini player (#1425 for the window events). L.
 
 Engine work (#1425): the walk found nothing new missing beyond what is already listed there:
-- an `externalApp` tab event and the `externalAppAlive` page call, so the app can ask before launching mailto and other
-  app links (the Mac's hook is `g_ardia_external_protocol_dialog`; the app side is done, #1590);
 - `ac_passwords_logins` answering on Windows, where Chromium's `kSkipUndecryptablePasswords` is on by default (password
   sync);
 - the password, permission and picture-in-picture events the app needs to draw its own prompts and windows;
