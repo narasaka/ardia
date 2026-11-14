@@ -1,6 +1,6 @@
 import { showMenu } from "../../../state/app/system";
 import { Box, Button, Dot, lineHeight, space, Symbol, Text, Toggle } from "../../ui";
-import { copyRecoveryPhrase, revealSyncFolder, type FolderInfo } from "../../../state/sync/recoveryKit";
+import { copyRecoveryPhrase, keyKeptUntilQuit, revealSyncFolder, type FolderInfo } from "../../../state/sync/recoveryKit";
 import { useEffect, useState } from "react";
 import { syncFolder } from "../../../state/settings/paneData";
 import { useResource } from "../../../state/settings/resources";
@@ -223,6 +223,11 @@ function SyncOn({ info }: { info: FolderInfo | null }) {
           </Text>
         </Box>
       ) : null}
+      {keyKeptUntilQuit() ? (
+        <Text size="caption" tone="textTertiary" style={FOOTNOTE()}>
+          No keyring found, so Ardia asks for your recovery phrase after each restart.
+        </Text>
+      ) : null}
 
       <SectionHeader
         title="Profiles"
@@ -271,7 +276,7 @@ function SyncOn({ info }: { info: FolderInfo | null }) {
             <Row
               key={d.id}
               icon={<Symbol name={deviceSymbol(d.kind, d.name)} size={15} color={theme.icon} style={{ width: 24, height: 20 }} />}
-              title={d.current ? `${d.name} (This ${PLATFORM_TERMS.computer})` : d.name}
+              title={d.current ? `${d.name} (This ${PLATFORM_TERMS.computerTitle})` : d.name}
               description={d.current ? statusLine(status, lastSyncedAt, 0) : d.lastSeen ? `last synced ${ago(d.lastSeen)}` : "hasn’t synced yet"}
             />
           ))

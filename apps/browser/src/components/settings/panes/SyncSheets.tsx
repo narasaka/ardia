@@ -209,7 +209,7 @@ export function RemoteProfileRow({ profile }: { profile: RemoteProfile }) {
       title={profile.name}
       description={remoteProfileDescription(profile)}
     >
-      <Button title={`Add to This ${PLATFORM_TERMS.computer}`} disabled={!!profile.waiting} onPress={() => addRemoteProfile(profile.syncId)} />
+      <Button title={`Add to This ${PLATFORM_TERMS.computerTitle}`} disabled={!!profile.waiting} onPress={() => addRemoteProfile(profile.syncId)} />
     </Row>
   );
 }
@@ -234,7 +234,7 @@ function JoinedSheet() {
   const addable = remote.filter((p) => !p.waiting).length;
   return (
     <Sheet size="l" onClose={closeSettingsSheet}>
-      <DialogTitle subtitle={joinedMessage(remote.length, joining, pending, error)}>{`This ${PLATFORM_TERMS.computer} Is Syncing`}</DialogTitle>
+      <DialogTitle subtitle={joinedMessage(remote.length, joining, pending, error)}>{`This ${PLATFORM_TERMS.computerTitle} Is Syncing`}</DialogTitle>
       {remote.length ? (
         <View style={SECTION_TOP}>
           <Group>
@@ -351,5 +351,5 @@ export function folderLabel(folder: Pick<FolderInfo, "path" | "inICloud">): stri
     const rest = folder.path.split("com~apple~CloudDocs")[1]?.split("/").filter(Boolean) ?? [];
     return ["iCloud Drive", ...rest].join(" › ");
   }
-  return folder.path.replace(/^\/Users\/[^/]+/, "~");
+  return folder.path.replace(/^\/(?:Users|home)\/[^/]+/, "~");
 }

@@ -2,6 +2,7 @@ name: Windows
 
 on:
   pull_request:
+    branches-ignore: [linux]
     paths:
       - "apps/browser/windows/**"
       - "apps/browser/NuGet.config"
