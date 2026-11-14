@@ -144,6 +144,7 @@ static int Prepare(const ArdiaEngineApi *engine) {
 
 static void ShutDown(Ardia::Host &host) {
   host.engine = nullptr;
+  SetFocus(nullptr);
   if (host.queue) host.queue.ShutdownQueue();
   Ardia::LaunchLog::Write(L"launch", L"process ending");
 }
@@ -204,6 +205,9 @@ __declspec(dllexport) int ArdiaAppPreTranslateMessage(const void *message) {
 }
 
 __declspec(dllexport) void ArdiaAppStop(void) {
+  int dialogsOpen = Ardia::DialogParts::ModalRegistry::Shared().threads.load();
+  int waited = Ardia::DialogParts::StopAllModals();
+  if (dialogsOpen) Ardia::LaunchLog::Write(L"launch", std::to_wstring(dialogsOpen) + L" dialog(s) open at stop, closed in " + std::to_wstring(waited) + L" ms, " + std::to_wstring(Ardia::DialogParts::ModalRegistry::Shared().threads.load()) + L" left");
   if (!EngineLoopRunning()) return;
   EngineLoopRunning() = false;
   Ardia::Host *host = Ardia::Host::Current();
