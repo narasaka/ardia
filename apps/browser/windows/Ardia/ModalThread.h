@@ -37,11 +37,19 @@ inline bool Stopping() noexcept {
 
 constexpr int StopWaitMs = 2000;
 
-inline void StopAllModals() noexcept {
+inline void DeliverSentMessages(DWORD waitMs) noexcept {
+  MsgWaitForMultipleObjects(0, nullptr, FALSE, waitMs, QS_SENDMESSAGE);
+  MSG message{};
+  PeekMessageW(&message, nullptr, 0, 0, PM_NOREMOVE | PM_QS_SENDMESSAGE);
+}
+
+inline int StopAllModals() noexcept {
   ModalRegistry &registry = ModalRegistry::Shared();
   registry.stopping = true;
   registry.freed.notify_all();
-  for (int waited = 0; registry.threads.load() > 0 && waited < StopWaitMs; waited += 50) Sleep(50);
+  ULONGLONG began = GetTickCount64();
+  while (registry.threads.load() > 0 && GetTickCount64() - began < StopWaitMs) DeliverSentMessages(10);
+  return static_cast<int>(GetTickCount64() - began);
 }
 
 inline void ReleaseAllModals() noexcept {
