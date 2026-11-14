@@ -11,3 +11,4 @@ import "./autofill";
 import "./requests";
 import "./contentBlocker";
 import "./extensions";
+import "./import";
