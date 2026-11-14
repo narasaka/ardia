@@ -56,6 +56,51 @@ reaches JS as `emitNativeEvent(module, event, payload)`, the same channel the Ma
 (sync methods through `callSync`, async through `call`), modules written in TypeScript, the engine's modules,
 `defaults.ts`, then an inert method that logs its name once (`ardiaLinuxMissing()` in the console lists them).
 
+## The main process
+
+- **Launch config.** `src/launch.ts` and `src/paths.ts` are the only files that read the environment (`ARDIA_DATA_DIR`,
+  `ARDIA_BACKGROUND`, `ARDIA_REMOTE_DEBUGGING_PORT`, `ARDIA_INSTANCE`, `ARDIA_SWITCHES`, `ARDIA_TRACE`, `ARDIA_TEST`,
+  `ARDIA_FEEDBACK_URL`). A test instance is an `ARDIA_DATA_DIR` outside `~/.local/share/ardia` and `~/.config/ardia`;
+  only there do `ARDIA_TEST` and `ARDIA_TRACE` count. Linux adds the trace area `keys` (every key press, its
+  webContents and window). The main process logs to stdout and `<data>/launch.log`.
+- **Documents.** `ArdiaDocuments` stages each write in memory (a read right after sees it) and lands it with an
+  atomic replace (temp file, fsync, rename), one at a time, retrying with backoff; quitting flushes synchronously.
+- **Quit.** `before-quit`, SIGTERM, SIGINT and SIGHUP emit `willQuit`; the UI saves and answers
+  `ArdiaAppWindows.replyToTerminate`, and Ardia exits, or exits anyway after 3 s (`src/quit.ts`).
+- **Keyboard shortcuts.** The Windows command table, ported (`src/menus`), runs on `before-input-event` of every
+  webContents, with Ctrl where the Mac has ⌘ and the user's remapped shortcuts. A `<webview>`'s keys arrive at the
+  page's and the host's webContents, so they go to the page's window (`resolvePageWindowsWith`), else the focused app
+  window. Context menus are native Electron menus; background instances log them to `activation.log` instead.
+- **Launch links.** URLs and files on the command line wait for the first window; a second launch with the same data
+  folder hands its links to the running app (`second-instance`), or opens a window (`--new-window`) or reopens one.
+- **Default browser and login.** `xdg-settings set default-web-browser ardia.desktop` (an AppImage first writes
+  `~/.local/share/applications/ardia.desktop` and its icons); open at login is `~/.config/autostart/ardia.desktop`.
+- **Updates** come from the GitHub releases of the repository the build was made from (`ARDIA_UPDATE_REPOSITORY` at
+  build time): Ardia checks every 6 hours and offers the release page; it doesn't update itself yet.
+- **Secrets** (`ArdiaKeychain`) are sealed with `safeStorage` (the desktop keyring through libsecret or KWallet; with
+  no keyring Electron falls back to its `basic_text` key).
+
+## Sandbox
+
+Chromium decides before any JavaScript runs, and aborts when the setuid helper is present but not setuid root and user
+namespaces are unusable, so the decision is a shell function (`apps/browser/linux/packaging/sandbox.sh`) that the
+packaged `ardia` launcher, `pnpm dev` and `scripts/linux/test-instance` run first: unprivileged user namespaces when the
+kernel allows them and AppArmor doesn't restrict them (or a profile grants `userns` to the binary), else a setuid-root
+`chrome-sandbox`, else `--no-sandbox`. The launcher passes the reason on and `launch.log` records it. The `.deb`'s
+postinst always makes `chrome-sandbox` setuid root (electron-builder's own keeps it 0755 whenever
+`unshare --user true` succeeds, which it does on Ubuntu 24.04 even though AppArmor then blocks Chromium's namespace
+sandbox) and installs an AppArmor profile that grants `userns` to `/opt/Ardia/ardia.bin`. An AppImage can't carry a
+setuid helper, so it is sandboxed where user namespaces work and runs with `--no-sandbox` elsewhere.
+
+## Packaging
+
+`pnpm -C apps/browser/linux package [--arch x64|arm64|all] [--target AppImage|deb|dir|all]` stages `out/` and `ui/`
+(no source maps) with a `package.json` that has no dependencies, since the main process is one esbuild bundle, and
+electron-builder makes `dist/Ardia-<version>-<arch>.AppImage` and `.deb`. The Electron binary ships as `ardia.bin`
+behind the `ardia` launcher script; `ardia.desktop` has `StartupWMClass=Ardia`, the `http`/`https`/`text/html`
+handlers and a New Window action. The version and build number come from the Mac project (`scripts/version.mjs`), the
+icons from its asset catalog, the intro music from the Windows build.
+
 ## Paths
 
 Data in `$XDG_DATA_HOME/ardia` (default `~/.local/share/ardia`) or `ARDIA_DATA_DIR`, config in
@@ -66,6 +111,15 @@ Data in `$XDG_DATA_HOME/ardia` (default `~/.local/share/ardia`) or `ARDIA_DATA_D
 - `pnpm -C apps/browser/linux dev`: Vite serves the UI, Electron loads it.
 - `pnpm -C apps/browser/linux build`: the UI bundle and the main process, then `package` makes the AppImage and `.deb`
   in `apps/browser/linux/dist`.
-- Headless: `scripts/linux/xvfb <display> -- <command>` runs a command on a virtual display;
-  `scripts/linux/test-instance` starts a hidden instance with its own data dir and a remote debugging port, and
-  `scripts/linux/capture <port> <out.png>` screenshots its windows.
+- Headless: `scripts/linux/xvfb <display> -- <command>` runs a command on a virtual display (the system Xvfb, or one
+  unpacked in `~/.local/xvfb`).
+- `scripts/linux/test-instance <name> [--port N] [--display N] [--data DIR] [--app PATH] [-- <links>]` builds nothing,
+  starts a hidden instance on its own Xvfb with its own `ARDIA_DATA_DIR` and debugging port, waits for the port and
+  prints the pid; `--stop` quits it through the quit handshake and stops its Xvfb. `--app` runs a packaged build (an
+  extracted AppImage folder or `/opt/Ardia`).
+- `scripts/linux/capture <port> <out-dir>` screenshots every app window and page over CDP.
+- `scripts/linux/launch-smoke <out-dir> [--app PATH]` is CI's check: a fresh instance with a fixture page as a launch
+  link, the first window and the loaded page within 90 s, screenshots, a clean quit and a saved session.
+- CI (`.github/workflows/linux.yml`) runs on pushes and PRs to `linux`, on x64 and arm64: typecheck, build, package,
+  the smoke on the checkout's build and on the extracted AppImage under `xvfb-run`, checks of the `.deb`, and uploads
+  the screenshots, logs, AppImage and `.deb`.
