@@ -60,6 +60,7 @@ jobs:
         working-directory: apps/browser
         run: npx react-native run-windows --release --arch x64 --no-launch --no-deploy --no-packager --no-telemetry --logging
       - name: Launch it
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App apps/browser/windows/x64/Release/Ardia.exe -Out "${{ runner.temp }}/launch"
       - name: Tour
@@ -107,6 +108,7 @@ jobs:
           retention-days: 14
       - name: Launch it with the engine
         if: ${{ !cancelled() && steps.engine.outcome == 'success' }}
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App "${{ runner.temp }}/Ardia/Ardia.exe" -Out "${{ runner.temp }}/launch-engine"
       - name: Tour the pages
@@ -214,6 +216,7 @@ jobs:
           & $msbuild windows\Ardia.sln /nologo /restore /p:RestorePackagesConfig=true /p:Configuration=Release /p:Platform=ARM64 /p:AppxBundle=Never /p:RunAutolinkCheck=false /p:PreferredToolArchitecture=arm64 "/clp:NoSummary;NoItemAndPropertyList;Verbosity=normal" "/bl:windows\msbuild_arm64_build.binlog" "/flp1:errorsonly;logfile=windows\msbuild_arm64_build.err" "/flp2:warningsonly;logfile=windows\msbuild_arm64_build.wrn"
           exit $LASTEXITCODE
       - name: Launch it
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App apps/browser/windows/ARM64/Release/Ardia.exe -Out "${{ runner.temp }}/launch" -NoInput
       - name: Host manifest
@@ -253,6 +256,7 @@ jobs:
           retention-days: 14
       - name: Launch it with the engine
         if: ${{ !cancelled() && steps.engine.outcome == 'success' }}
+        timeout-minutes: 12
         shell: pwsh
         run: scripts/windows/launch-smoke.ps1 -App "${{ runner.temp }}/Ardia/Ardia.exe" -Out "${{ runner.temp }}/launch-engine" -NoInput
       - if: ${{ !cancelled() }}

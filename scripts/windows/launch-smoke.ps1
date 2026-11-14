@@ -548,8 +548,22 @@ function Wait-GateLine([object]$Run, [string]$CaseLog, [string]$Pattern) {
 }
 
 function Stop-Tree([int]$Id) {
-  Get-CimInstance Win32_Process -Filter "ParentProcessId=$Id" -ErrorAction SilentlyContinue | ForEach-Object { Stop-Tree ([int]$_.ProcessId) }
-  Stop-Process -Id $Id -Force -ErrorAction SilentlyContinue
+  $running = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate -OperationTimeoutSec 15 -ErrorAction SilentlyContinue)
+  $started = @{}
+  foreach ($process in $running) { $started[[int]$process.ProcessId] = $process.CreationDate }
+  $tree = New-Object 'System.Collections.Generic.List[int]'
+  $tree.Add($Id)
+  for ($next = 0; $next -lt $tree.Count; $next++) {
+    $parent = $tree[$next]
+    foreach ($process in $running) {
+      $child = [int]$process.ProcessId
+      if ([int]$process.ParentProcessId -ne $parent -or $tree.Contains($child)) { continue }
+      if ($started[$parent] -and $process.CreationDate -and $process.CreationDate -lt $started[$parent]) { continue }
+      $tree.Add($child)
+    }
+  }
+  Write-Host "stopping $($tree.Count) process(es) under $Id"
+  for ($last = $tree.Count - 1; $last -ge 0; $last--) { Stop-Process -Id $tree[$last] -Force -ErrorAction SilentlyContinue }
 }
 
 function Stop-GateLaunch([object]$Run) {
