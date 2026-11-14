@@ -22,6 +22,7 @@ const PAGE_TITLE = "ardia self check";
 const PAGE_URL = `data:text/html,<title>${PAGE_TITLE}</title><p>the engine loaded this page</p>`;
 const NEXT_PAGE_TITLE = "ardia self check, next document";
 const NEXT_PAGE_URL = `data:text/html,<title>${NEXT_PAGE_TITLE}</title><p>the page that replaced the asking document</p>`;
+const FLOOD_GUARD_REARM_URL = "hcp:ardia-self-check";
 const PAGE_PLACE = { x: 40, y: 60, width: 320, height: 240 };
 const LOAD_MS = 20000;
 const PAINT_MS = 500;
@@ -272,34 +273,48 @@ const withEngine: Check[] = [
     },
   },
   {
-    name: "engine: a data: page's link to another app reaches the app as an externalApp ask, which stops counting once that page's document is gone",
+    name: "engine: a data: page's link to another app reaches the app as an externalApp ask, which counts once while its document is there and not after that document is gone",
     async run() {
-      const asked = new Promise<Record<string, unknown>>((resolve, reject) => {
-        const watching = onEngineTopic("tab", (event: { key?: unknown; name?: unknown; data?: unknown }) => {
-          if (event.key !== PAGE_KEY || event.name !== "externalApp") return;
-          clearTimeout(deadline);
-          watching.remove();
-          resolve((event.data ?? {}) as Record<string, unknown>);
+      const pageAsk = async (link: string, waitMs: number) => {
+        const asked = new Promise<Record<string, unknown> | null>((resolve) => {
+          const watching = onEngineTopic("tab", (event: { key?: unknown; name?: unknown; data?: unknown }) => {
+            if (event.key !== PAGE_KEY || event.name !== "externalApp") return;
+            clearTimeout(deadline);
+            watching.remove();
+            resolve((event.data ?? {}) as Record<string, unknown>);
+          });
+          const deadline = setTimeout(() => {
+            watching.remove();
+            resolve(null);
+          }, waitMs);
         });
-        const deadline = setTimeout(() => {
-          watching.remove();
-          reject(new Error("no externalApp event within 10000 ms"));
-        }, 10000);
-      });
-      await hostCall("tab.call", { key: PAGE_KEY, method: "executeJavaScript", code: 'location.href = "ardia-self-check-link:hello"' });
-      const ask = await asked;
+        await hostCall("tab.call", { key: PAGE_KEY, method: "executeJavaScript", code: `location.href = ${JSON.stringify(link)}` });
+        return asked;
+      };
+      const alive = async (id: unknown) => (await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id })).alive;
+      const ask = await pageAsk("ardia-self-check-link:hello", 10000);
+      if (!ask) throw new Error("no externalApp event within 10000 ms");
       expectEqual({ url: ask.url, origin: ask.origin, offTheRecord: ask.offTheRecord }, { url: "ardia-self-check-link:hello", origin: null, offTheRecord: false }, "the externalApp ask");
       expectTrue(typeof ask.id === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(ask.id), `the ask's id is ${JSON.stringify(ask.id)}`);
       expectEqual(typeof ask.userGesture, "boolean", "the ask's userGesture");
+      expectEqual({ whileTheDocumentIsThere: await alive(ask.id), answeredAgain: await alive(ask.id) }, { whileTheDocumentIsThere: true, answeredAgain: false }, "externalAppAlive for the data: page's ask");
+      let second: Record<string, unknown> | null = null;
+      for (let attempt = 0; attempt < 4 && !second; attempt++) {
+        await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: FLOOD_GUARD_REARM_URL, userInitiated: true });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        second = await pageAsk("ardia-self-check-link:again", 3000);
+      }
+      if (!second) throw new Error("no second externalApp event from the data: page after 4 typed launches of a blocked scheme");
+      expectEqual({ url: second.url, origin: second.origin }, { url: "ardia-self-check-link:again", origin: null }, "the data: page's second externalApp ask");
       const replaced = pageTitled(NEXT_PAGE_TITLE);
       await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: NEXT_PAGE_URL });
       await replaced;
-      const gone = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: ask.id });
-      const unknown = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: "x0" });
+      const gone = await alive(second.id);
+      const unknown = await alive("x0");
       const restored = pageTitled(PAGE_TITLE);
       await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: PAGE_URL });
       await restored;
-      expectEqual({ afterTheDocumentWent: gone.alive, unknown: unknown.alive }, { afterTheDocumentWent: false, unknown: false }, "externalAppAlive");
+      expectEqual({ afterTheDocumentWent: gone, unknown }, { afterTheDocumentWent: false, unknown: false }, "externalAppAlive");
     },
   },
   {
