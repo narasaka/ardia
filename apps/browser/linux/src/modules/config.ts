@@ -43,7 +43,7 @@ function readFile(name: string) {
 
 let watchers: FSWatcher[] = [];
 let watched = new Set<string>();
-let pending: NodeJS.Timeout | undefined;
+let pending: ReturnType<typeof setTimeout> | undefined;
 
 function changed(name: string | null): void {
   if (name && name !== "themes" && !watched.has(name)) return;

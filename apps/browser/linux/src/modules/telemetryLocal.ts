@@ -15,7 +15,7 @@ let keepMs = 30 * DAY_MS;
 let droppedSincePrune = 0;
 const writeMs: number[] = [];
 const buffered = new Map<string, string[]>();
-let flushTimer: NodeJS.Timeout | undefined;
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
 const folder = () => join(dataDirectory(), "Telemetry", "local");
 const validDay = (day: string) => /^\d{4}-\d{2}-\d{2}$/.test(day);

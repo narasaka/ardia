@@ -37,7 +37,7 @@ async function fetchBangList(etag: string | null) {
 }
 
 function watchActivation(): void {
-  let resignTimer: NodeJS.Timeout | undefined;
+  let resignTimer: ReturnType<typeof setTimeout> | undefined;
   app.on("browser-window-blur", () => {
     clearTimeout(resignTimer);
     resignTimer = setTimeout(() => {

@@ -22,7 +22,7 @@ const buildChannel = (): Channel => (/nightly/.test(APP_VERSION) ? "nightly" : "
 
 let preferencesRead: Preferences | null = null;
 let checking = false;
-let timer: NodeJS.Timeout | undefined;
+let timer: ReturnType<typeof setInterval> | undefined;
 
 function preferences(): Preferences {
   if (preferencesRead) return preferencesRead;

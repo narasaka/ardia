@@ -13,4 +13,6 @@ import "./shell";
 import "./system";
 import "./systemSignals";
 import "./telemetryLocal";
+import "./notOnLinux";
+import "./report";
 import "./updater";

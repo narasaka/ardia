@@ -30,3 +30,4 @@ const iconSet = `${root}../macos/Ardia-macOS/Assets.xcassets/AppIcon.appiconset/
 const iconSizes = { "16x16": "icon_16x16_1x", "32x32": "icon_32x32_1x", "64x64": "icon_32x32_2x", "128x128": "icon_128x128_1x", "256x256": "icon_256x256_1x", "512x512": "icon_512x512_1x", "1024x1024": "icon_512x512_2x" };
 mkdirSync(`${root}out/icons`, { recursive: true });
 for (const [size, source] of Object.entries(iconSizes)) copyFileSync(`${iconSet}${source}.png`, `${root}out/icons/${size}.png`);
+copyFileSync(`${root}../windows/Ardia/IntroMusic.wav`, `${root}out/IntroMusic.wav`);

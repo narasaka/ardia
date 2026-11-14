@@ -9,7 +9,7 @@ const IDLE_POLL_MS = 5000;
 
 let idleThresholds: number[] = [];
 const idleNow = new Map<number, boolean>();
-let idleTimer: NodeJS.Timeout | undefined;
+let idleTimer: ReturnType<typeof setInterval> | undefined;
 let holdIncomingLinks = false;
 let approvedFolders: string[] = [];
 let asleep = false;

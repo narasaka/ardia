@@ -6,6 +6,7 @@ import { launchConfig } from "../launch";
 import { note } from "../log";
 import { isBackground } from "../paths";
 import { diagnosticsSample, hardwareInfo, systemInfo } from "../system/info";
+import { playIntroMusic, setIntroMusicMuted, stopIntroMusic } from "../introMusic";
 
 const EXTERNAL_SCHEMES = /^(https?|mailto|tel|sms|facetime|zoommtg|slack|spotify|steam|tg|discord|msteams|vscode|x-[a-z0-9.+-]+):/i;
 
@@ -62,5 +63,8 @@ defineModule("ArdiaApp", {
     },
     shareText: async () => {},
     quitApp: async () => app.quit(),
+    playIntroMusic: async (_cues: unknown, muted: boolean) => void (await playIntroMusic(!!muted)),
+    setIntroMusicMuted: async (muted: boolean) => void (await setIntroMusicMuted(!!muted)),
+    stopIntroMusic: async (fade: number) => void (await stopIntroMusic(fade)),
   },
 });
