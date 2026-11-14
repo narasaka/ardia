@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import { wireMainEvents } from "./events";
 import { viewNamed } from "./views/registry";
+import { installWindowRoot } from "./windows/windowRoot";
 
 export type { EventSubscription } from "./events";
 export { emitNativeEvent } from "./events";
@@ -12,6 +13,7 @@ export function requireNativeViewManager<Props = object>(name: string): Componen
 }
 
 wireMainEvents();
+installWindowRoot();
 
 export const uuid = {
   v4(): string {

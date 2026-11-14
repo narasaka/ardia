@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { isWindowDark, useWindowId } from "./windows/windowRoot";
 import { addNativeListener } from "./events";
 
 type AppEvent = { type?: string; dark?: unknown };
@@ -33,5 +34,6 @@ export function onAppDarkChange(listener: () => void): () => void {
 }
 
 export function useAppDark(): boolean {
-  return useSyncExternalStore(onAppDarkChange, appDark);
+  const app = useSyncExternalStore(onAppDarkChange, appDark);
+  return isWindowDark(useWindowId()) || app;
 }

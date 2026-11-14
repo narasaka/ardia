@@ -4,6 +4,7 @@ import { callMain, callMainSync } from "../bridge";
 import { addNativeListener } from "../events";
 import { adoptAppWindow, forgetAppWindow } from "../host/acrossWindows";
 import { mirrorStylesInto, stopMirroring } from "../host/documentStyles";
+import { isWindowDark, setWindowDark } from "./windowRoot";
 
 type Realm = Window & typeof globalThis;
 type OpenOptions = { kind?: string; title?: string; focus?: boolean; animated?: boolean; incognito?: boolean } & Record<string, unknown>;
@@ -27,7 +28,7 @@ function applyShape(id: string) {
   if (!doc) return;
   const state = squared.get(id);
   doc.documentElement.dataset.ardiaShape = state?.maximized || state?.fullScreen ? "square" : "round";
-  doc.documentElement.dataset.ardiaDark = String(appDark());
+  doc.documentElement.dataset.ardiaDark = String(appDark() || isWindowDark(id));
 }
 
 addNativeListener(MODULE, "onWindowEvent", (payload) => {
@@ -127,6 +128,7 @@ export async function openWindow(id: string, options: OpenOptions = {}): Promise
     return;
   }
   kinds.set(id, options.kind ?? "browser");
+  setWindowDark(id, options.incognito === true);
   callMainSync(MODULE, "shapeWindow", id, JSON.parse(JSON.stringify(options)));
   const realm = window.open("about:blank", id) as Realm | null;
   if (!realm) throw new Error(`window ${id} could not open`);
