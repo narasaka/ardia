@@ -20,6 +20,8 @@ const keyboardInfo = () => hostCall<KeyboardInfo>("host.info");
 const focusAsked = async () => ((await keyboardInfo()).keyboardMayMove === true ? {} : { background: true });
 const PAGE_TITLE = "ardia self check";
 const PAGE_URL = `data:text/html,<title>${PAGE_TITLE}</title><p>the engine loaded this page</p>`;
+const NEXT_PAGE_TITLE = "ardia self check, next document";
+const NEXT_PAGE_URL = `data:text/html,<title>${NEXT_PAGE_TITLE}</title><p>the page that replaced the asking document</p>`;
 const PAGE_PLACE = { x: 40, y: 60, width: 320, height: 240 };
 const LOAD_MS = 20000;
 const PAINT_MS = 500;
@@ -289,11 +291,14 @@ const withEngine: Check[] = [
       expectEqual({ url: ask.url, origin: ask.origin, offTheRecord: ask.offTheRecord }, { url: "ardia-self-check-link:hello", origin: null, offTheRecord: false }, "the externalApp ask");
       expectTrue(typeof ask.id === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(ask.id), `the ask's id is ${JSON.stringify(ask.id)}`);
       expectEqual(typeof ask.userGesture, "boolean", "the ask's userGesture");
-      const reloaded = pageTitled(PAGE_TITLE);
-      await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: PAGE_URL });
-      await reloaded;
+      const replaced = pageTitled(NEXT_PAGE_TITLE);
+      await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: NEXT_PAGE_URL });
+      await replaced;
       const gone = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: ask.id });
       const unknown = await hostCall<{ alive?: unknown }>("tab.call", { key: PAGE_KEY, method: "externalAppAlive", id: "x0" });
+      const restored = pageTitled(PAGE_TITLE);
+      await hostCall("tab.call", { key: PAGE_KEY, method: "loadUrl", url: PAGE_URL });
+      await restored;
       expectEqual({ afterTheDocumentWent: gone.alive, unknown: unknown.alive }, { afterTheDocumentWent: false, unknown: false }, "externalAppAlive");
     },
   },
