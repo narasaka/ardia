@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import { wireMainEvents } from "./events";
+import { emitNativeEvent, wireMainEvents } from "./events";
+import { requireNativeModule } from "./modules";
 import { viewNamed } from "./views/registry";
 import { installWindowRoot } from "./windows/windowRoot";
 
@@ -14,6 +15,14 @@ export function requireNativeViewManager<Props = object>(name: string): Componen
 
 wireMainEvents();
 installWindowRoot();
+
+Object.assign(globalThis, {
+  ardiaLinuxDebug: {
+    module: requireNativeModule,
+    emit: emitNativeEvent,
+    command: (command: string, arg: string | null = null, windowId: string | null = null) => emitNativeEvent("ArdiaMenus", "onCommand", { command, arg, windowId, focusGeneration: null }),
+  },
+});
 
 export const uuid = {
   v4(): string {
