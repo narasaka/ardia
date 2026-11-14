@@ -161,9 +161,11 @@ watcher. The watcher re-resolves the folder when it changes and notices it appea
 ### Errors
 
 A file that doesn't parse, an unknown key, a wrong value or a missing theme never breaks anything: Ardia applies what
-is valid, skips the rest (a bad value skips that whole setting), logs it and shows one toast per distinct problem
-("config.json: selectedTabGlow must be full, soft or off"). An unparseable theme file keeps the last good version of
-that theme. `ardia config check` reports the same problems.
+is valid, skips the rest (a bad value skips that whole setting), logs it and shows one toast that sums them up
+("config.json has a problem: selectedTabGlow must be full, soft or off"; past two, "and N more"). The toast stays
+until the file is fixed or you dismiss it; it comes back only for a new problem, waits for another toast (an Undo,
+say) to finish instead of replacing it, and goes away by itself once the files are clean. An unparseable theme file
+keeps the last good version of that theme. `ardia config check` reports the same problems.
 
 ## Themes
 
