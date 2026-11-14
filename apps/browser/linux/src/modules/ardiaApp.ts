@@ -6,6 +6,7 @@ import { launchConfig } from "../launch";
 import { note } from "../log";
 import { isBackground } from "../paths";
 import { diagnosticsSample, hardwareInfo, systemInfo } from "../system/info";
+import { crashReports } from "../crashes";
 import { playIntroMusic, setIntroMusicMuted, stopIntroMusic } from "../introMusic";
 
 const EXTERNAL_SCHEMES = /^(https?|mailto|tel|sms|facetime|zoommtg|slack|spotify|steam|tg|discord|msteams|vscode|x-[a-z0-9.+-]+):/i;
@@ -50,7 +51,7 @@ defineModule("ArdiaApp", {
     openExternalURL: (url: string) => openExternal(url),
     hardwareInfo,
     diagnosticsSample: async () => diagnosticsSample(),
-    crashReports: async () => [],
+    crashReports: async (since: number) => crashReports(Number(since) || 0),
     appIcons: async () => [],
     appIcon,
     setAppIcon: async () => {},

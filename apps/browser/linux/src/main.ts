@@ -1,6 +1,7 @@
 import { app, nativeImage, type BrowserWindow } from "electron";
 import { join } from "node:path";
 import { installBridge } from "./bridge";
+import { pruneCrashDumps, startCrashReporter } from "./crashes";
 import "./engine";
 import "./menus/keyboard";
 import "./modules";
@@ -17,6 +18,7 @@ import { createHost } from "./windows";
 app.setName("Ardia");
 app.setDesktopName(DESKTOP_FILE);
 app.setPath("userData", join(dataDirectory(), "Engine"));
+startCrashReporter();
 if (hostEnvironment.remoteDebuggingPort) app.commandLine.appendSwitch("remote-debugging-port", hostEnvironment.remoteDebuggingPort);
 
 const sandboxed = !app.commandLine.hasSwitch("no-sandbox");
@@ -41,6 +43,7 @@ if (!app.requestSingleInstanceLock({ dataDirectory: dataDirectory() })) {
     if (!icon.isEmpty()) window.setIcon(icon);
   });
   app.whenReady().then(() => {
+    pruneCrashDumps();
     installBridge();
     createHost(loadUi);
   });
