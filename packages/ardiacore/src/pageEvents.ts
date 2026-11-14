@@ -11,6 +11,7 @@ import type {
   DiscardReason,
   DisplayMediaRequest,
   DownloadNavigation,
+  FairPlayReport,
   FindResult,
   LoadError,
   MediaAccess,
@@ -66,6 +67,7 @@ type NativeEvents = {
   onSelection: { selection: PageSelection | null };
   onScroll: { state: ScrollState };
   onProtectedMedia: ProtectedMediaRequest;
+  onFairPlay: FairPlayReport;
   onReady: object;
   onDiscarded: { url: string; reason?: DiscardReason | "" };
   onPasswordPrompt: PasswordPrompt;
@@ -114,6 +116,7 @@ const PAGE_EVENTS = {
   onSelection: "selection",
   onScroll: "scroll",
   onProtectedMedia: "protectedMedia",
+  onFairPlay: "fairPlay",
   onReady: "ready",
   onDiscarded: "discarded",
   onPasswordPrompt: "passwordPrompt",
@@ -162,6 +165,7 @@ const unwrap: { [K in Handlers]: (e: NativeEvents[K]) => Parameters<NonNullable<
   onSelection: (e) => [e.selection],
   onScroll: (e) => [e.state],
   onProtectedMedia: (e) => [e],
+  onFairPlay: (e) => [e],
   onReady: () => [],
   onDiscarded: (e) => [toAppUrl(e.url), e.reason || null],
   onPasswordPrompt: (e) => [e],

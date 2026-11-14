@@ -103,6 +103,7 @@ export const WHATS_SENT: { title: string; items: string[] }[] = [
       "How many times you went back to a video's tab from its Picture in Picture window, for Chromium and WebKit tabs separately, summed up once an hour",
       "How many times a click on the left or right side of a Picture in Picture video skipped it back or ahead 10 seconds, each side separately, summed up once an hour",
       "How often a site panel (Site Controls, Zoom, blocked pop-ups) is closed by a click outside it or by Esc, how many times Site Controls set a site's Autoplay to Block or to Allow and how often its Site Settings… opened Settings, how often the ⌃Tab switcher opens and how often it opens over a WebKit page, how many closed pinned tabs it left out and how many tabs opened in the background and not yet viewed it listed last, summed up once an hour",
+      "How many Spotify tracks played in a Chromium tab through Ardia's own FairPlay player, and how many failed and at which step (the licence, playback, or the player itself), summed up once an hour. Never which tracks",
       "Whether a profile switch came from the sidebar's profile switcher, whether it showed icons or dots, and whether it came within 2 seconds of a switcher press for a different profile (a corrected mis-click)",
       "The kind of command bar row you pick: history, bookmark, tab, address, search, calculator or action",
       "How many bookmarklets you ran from a bookmark, and how many did nothing because the tab showed no web page, summed up once an hour. Never which bookmarklet or page",
