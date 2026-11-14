@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Usage: scripts/linux/test-instance <name> [--port N] [--display N] [--data DIR] [--app PATH] [--visible] [-- <app args>]
+#        scripts/linux/test-instance <name> --stop
+# Starts a hidden Ardia test instance on a private Xvfb display with its own ARDIA_DATA_DIR and remote debugging port, builds nothing,
+# waits until the debugging port answers, prints the instance's pid and exits. --stop quits it cleanly (willQuit, saves) and stops its Xvfb.
+# --app runs a packaged build (an extracted AppImage folder, the .deb's /opt/Ardia, or a launcher script) instead of the checkout's Electron.
+# --visible leaves ARDIA_BACKGROUND unset, so menus and dialogs are shown on the virtual display instead of logged.
+# State lives in ${ARDIA_INSTANCES:-${TMPDIR:-/tmp}/ardia-instances}/<name>: pid, port, display, data/ and instance.log.
+set -euo pipefail
+[[ "${1:-}" == "-h" || "${1:-}" == "--help" || $# -eq 0 ]] && { sed -n "2,8p" "$0" | cut -c3-; exit 0; }
+repo="$(cd "$(dirname "$0")/../.." && pwd)"
+name="$1"; shift
+[[ "$name" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "test-instance: the name may use letters, digits, . _ -" >&2; exit 2; }
+base="${ARDIA_INSTANCES:-${TMPDIR:-/tmp}/ardia-instances}/$name"
+hash=$(( $(printf '%s' "$name" | cksum | cut -d' ' -f1) % 400 ))
+port=$((9400 + hash)); display=$((200 + hash)); data=""; app=""; visible=""; stop=""; extra=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port) port="$2"; shift 2 ;;
+    --display) display="$2"; shift 2 ;;
+    --data) data="$2"; shift 2 ;;
+    --app) app="$2"; shift 2 ;;
+    --visible) visible=1; shift ;;
+    --stop) stop=1; shift ;;
+    --) shift; extra=("$@"); break ;;
+    *) echo "test-instance: unknown option $1" >&2; exit 2 ;;
+  esac
+done
+
+alive() { [[ -n "${1:-}" ]] && kill -0 "$1" 2>/dev/null; }
+
+if [[ -n "$stop" ]]; then
+  [[ -f "$base/pid" ]] || { echo "test-instance: $name isn't running" >&2; exit 0; }
+  pid="$(cat "$base/pid")"; wrapper="$(cat "$base/wrapper" 2>/dev/null || true)"
+  if alive "$pid"; then
+    kill -TERM "$pid" 2>/dev/null || true
+    for _ in $(seq 100); do alive "$pid" || break; sleep 0.1; done
+    alive "$pid" && { echo "test-instance: $name didn't quit in 10 s; killing it" >&2; kill -KILL "$pid" 2>/dev/null || true; }
+  fi
+  for _ in $(seq 30); do alive "$wrapper" || break; sleep 0.1; done
+  alive "$wrapper" && kill -TERM "$wrapper" 2>/dev/null || true
+  rm -f "$base/pid" "$base/wrapper"
+  echo "stopped $name"
+  exit 0
+fi
+
+if [[ -f "$base/pid" ]] && alive "$(cat "$base/pid")"; then
+  echo "test-instance: $name is already running (pid $(cat "$base/pid"), port $(cat "$base/port"))" >&2; exit 1
+fi
+mkdir -p "$base"
+data="${data:-$base/data}"; mkdir -p "$data"
+source "$repo/apps/browser/linux/packaging/sandbox.sh"
+
+if [[ -z "$app" ]]; then
+  binary="$repo/node_modules/electron/dist/electron"
+  [[ -x "$binary" ]] || { echo "test-instance: Electron isn't installed; run node node_modules/electron/install.js" >&2; exit 1; }
+  [[ -f "$repo/apps/browser/linux/out/main.js" ]] || { echo "test-instance: build first: pnpm -C apps/browser/linux build" >&2; exit 1; }
+  ardia_sandbox_decide "$binary"
+  command=("$binary" "${ARDIA_SANDBOX_FLAGS[@]}" "$repo/apps/browser/linux")
+elif [[ -d "$app" ]]; then
+  if [[ -x "$app/ardia" ]]; then command=("$app/ardia"); else command=("$app/AppRun"); fi
+else
+  command=("$app")
+fi
+
+: > "$base/instance.log"
+env_vars=(ARDIA_DATA_DIR="$data" ARDIA_REMOTE_DEBUGGING_PORT="$port" ARDIA_INSTANCE_NAME="$name")
+[[ -z "$visible" ]] && env_vars+=(ARDIA_BACKGROUND=1)
+setsid env "${env_vars[@]}" "$repo/scripts/linux/xvfb" "$display" -- "${command[@]}" --enable-logging=stderr "${extra[@]}" >>"$base/instance.log" 2>&1 < /dev/null &
+wrapper=$!
+echo "$wrapper" > "$base/wrapper"; echo "$port" > "$base/port"; echo "$display" > "$base/display"; echo "$data" > "$base/data-dir"
+
+main_process() {
+  local child args
+  for child in $(pgrep -s "$wrapper" 2>/dev/null || true); do
+    args="$(tr '\0' ' ' < "/proc/$child/cmdline" 2>/dev/null || true)"
+    [[ "$args" == *--enable-logging=stderr* && "$args" != *--type=* && "$args" != *scripts/linux/xvfb* ]] || continue
+    [[ "$(readlink "/proc/$child/exe" 2>/dev/null)" == */bash ]] && continue
+    echo "$child"; return 0
+  done
+  return 1
+}
+
+for _ in $(seq 300); do
+  alive "$wrapper" || { echo "test-instance: $name exited during launch; log: $base/instance.log" >&2; tail -20 "$base/instance.log" >&2; exit 1; }
+  if curl -fs "http://127.0.0.1:$port/json/version" >/dev/null 2>&1 && pid="$(main_process)"; then
+    echo "$pid" > "$base/pid"
+    echo "$pid"
+    exit 0
+  fi
+  sleep 0.1
+done
+echo "test-instance: $name's debugging port $port didn't answer in 30 s; log: $base/instance.log" >&2
+kill -TERM "$wrapper" 2>/dev/null || true
+exit 1

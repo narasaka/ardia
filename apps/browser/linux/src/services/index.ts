@@ -1,0 +1,14 @@
+import "./history";
+import "./favicons";
+import "./bookmarks";
+import "./profileData";
+import "./sites";
+import "./search";
+import "./guests";
+import "./passwords";
+import "./pagePasswords";
+import "./autofill";
+import "./requests";
+import "./contentBlocker";
+import "./extensions";
+import "./import";

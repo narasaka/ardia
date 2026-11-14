@@ -2,6 +2,7 @@ name: Android
 
 on:
   pull_request:
+    branches-ignore: [linux]
     paths:
       - "apps/android/**"
       - "apps/ios/Packages/ArdiaKit/Sources/ArdiaShared/Scripts/**"
