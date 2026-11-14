@@ -1,0 +1,32 @@
+import { linuxFocus } from "./focus";
+import { linuxInlineCompletion } from "./inlineCompletion";
+import { devPagerState, pagerState, selectPager, stepPager, switchPager } from "./web/Pager";
+import { watchSidebarEdge } from "./web/motion/sidebarEdge";
+import { animateWindowClose, closeWindow, focusWindow, openWindow } from "./windows/appWindows";
+
+type Call = (...values: unknown[]) => unknown;
+
+export const writtenInTs: Record<string, Record<string, unknown>> = {
+  ArdiaAppWindows: {
+    openWindow,
+    animateWindowClose,
+    watchSidebarEdge: async (id: string, on: boolean, hold: number, right: boolean) => watchSidebarEdge(id, on, hold, right),
+    dragPreviewBegin: async () => {},
+    dragPreviewPage: async () => {},
+    dragPreviewUpdate: async () => {},
+    dragPreviewCancel: async () => {},
+    dragPreviewPlaceholder: async () => {},
+    dragPreviewEnd: async () => {},
+    raiseView: async () => {},
+  },
+  ArdiaFocus: linuxFocus,
+  ArdiaInlineCompletion: linuxInlineCompletion,
+  ArdiaSwipe: { haptic: () => {}, switchPager, stepPager, selectPager, pagerState, devPagerState, devSimulate: async () => null },
+};
+
+export const aroundMain: Record<string, Record<string, (main: Call | null) => unknown>> = {
+  ArdiaAppWindows: {
+    closeWindow: (main) => (id: string) => closeWindow(id, main),
+    focusWindow: () => (id: string) => focusWindow(id),
+  },
+};

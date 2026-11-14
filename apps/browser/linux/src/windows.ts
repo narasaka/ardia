@@ -1,12 +1,15 @@
 import { BrowserWindow, type BrowserWindowConstructorOptions } from "electron";
 import { join } from "node:path";
 import { addReceiver } from "./bridge";
-import { isBackground } from "./paths";
 
 export const preloadPath = () => join(__dirname, "preload.js");
 
+type CreatedListener = (id: string, window: BrowserWindow) => void;
+
 const pending = new Map<string, BrowserWindowConstructorOptions>();
 const appWindows = new Map<string, BrowserWindow>();
+const createdListeners = new Set<CreatedListener>();
+let hostWindow: BrowserWindow | null = null;
 
 export function shapeNextWindow(id: string, options: BrowserWindowConstructorOptions): void {
   pending.set(id, options);
@@ -14,16 +17,31 @@ export function shapeNextWindow(id: string, options: BrowserWindowConstructorOpt
 
 export const appWindow = (id: string): BrowserWindow | undefined => appWindows.get(id);
 export const appWindowIds = (): string[] => [...appWindows.keys()];
+export const host = (): BrowserWindow | null => hostWindow;
+
+export function appWindowIdOf(window: BrowserWindow | null | undefined): string | null {
+  if (!window) return null;
+  for (const [id, open] of appWindows) if (open === window) return id;
+  return null;
+}
+
+export function onAppWindowCreated(listener: CreatedListener): () => void {
+  createdListeners.add(listener);
+  return () => void createdListeners.delete(listener);
+}
+
+const sharedWebPreferences = { contextIsolation: true, sandbox: false, webviewTag: true, backgroundThrottling: false, spellcheck: true } as const;
 
 export function createHost(load: (window: BrowserWindow) => Promise<void>): BrowserWindow {
-  const host = new BrowserWindow({
+  const made = new BrowserWindow({
     show: false,
     width: 400,
     height: 300,
-    webPreferences: { preload: preloadPath(), contextIsolation: true, sandbox: false, webviewTag: true, backgroundThrottling: false },
+    webPreferences: { preload: preloadPath(), ...sharedWebPreferences },
   });
-  addReceiver(host.webContents);
-  host.webContents.setWindowOpenHandler(({ frameName }) => {
+  hostWindow = made;
+  addReceiver(made.webContents);
+  made.webContents.setWindowOpenHandler(({ frameName }) => {
     const shaped = pending.get(frameName) ?? {};
     pending.delete(frameName);
     return {
@@ -31,18 +49,22 @@ export function createHost(load: (window: BrowserWindow) => Promise<void>): Brow
       outlivesOpener: false,
       overrideBrowserWindowOptions: {
         frame: false,
-        show: !isBackground(),
+        show: false,
         backgroundColor: "#00000000",
         transparent: true,
+        resizable: true,
         ...shaped,
-        webPreferences: { contextIsolation: true, sandbox: false, webviewTag: true, backgroundThrottling: false, ...shaped.webPreferences },
+        webPreferences: { ...sharedWebPreferences, ...shaped.webPreferences },
       },
     };
   });
-  host.webContents.on("did-create-window", (child, { frameName }) => {
+  made.webContents.on("did-create-window", (child, { frameName }) => {
     appWindows.set(frameName, child);
-    child.once("closed", () => appWindows.delete(frameName));
+    child.once("closed", () => {
+      if (appWindows.get(frameName) === child) appWindows.delete(frameName);
+    });
+    for (const listener of createdListeners) listener(frameName, child);
   });
-  void load(host);
-  return host;
+  void load(made);
+  return made;
 }

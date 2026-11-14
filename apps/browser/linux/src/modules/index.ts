@@ -1,4 +1,5 @@
 import "./app";
+import "./appWindows";
 import "./ardiaApp";
 import "./config";
 import "./dialogs";
