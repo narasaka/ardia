@@ -143,6 +143,10 @@ static int Prepare(const ArdiaEngineApi *engine) {
 }
 
 static void ShutDown(Ardia::Host &host) {
+  const ULONGLONG flushing = GetTickCount64();
+  Ardia::TelemetryLocalStore::Drain();
+  const bool documentsWritten = Ardia::DocumentStore::Flush(false);
+  Ardia::LaunchLog::Write(L"launch", std::wstring(L"telemetry and documents written in ") + std::to_wstring(GetTickCount64() - flushing) + L" ms" + (documentsWritten ? L"" : L", some documents still staged"));
   host.engine = nullptr;
   SetFocus(nullptr);
   if (host.queue) host.queue.ShutdownQueue();

@@ -142,6 +142,10 @@ what differs; the Mac's list is `docs/dia-feature-parity.md`. Rows marked "hidde
   - In the engine: Chromium's launcher loads the library on its UI thread and calls `ArdiaAppStart` with its API table.
     The app sets up and returns; Chromium runs the loop, hands each message to `ArdiaAppPreTranslateMessage` first, and
     calls `ArdiaAppStop` when the loop ends. Quitting asks the engine (`app.quit`) instead of ending the loop.
+    Pending telemetry and documents are written while stopping (`ShutDown` in `Ardia.cpp`), while their worker
+    threads still run. Nothing in the library may wait on another thread from an exit handler or a static destructor:
+    those run during `ExitProcess`, after Windows has ended every other thread, so such a wait only ends on its
+    timeout and the process outlives the quit (#1706: 30 s, which made the installer give up with exit 5).
   - `ArdiaEngineHost` (`EngineHostModule.h`) is the bridge: `available()`, `hostCall`, `engineCall`, and the engine's
     events as `ArdiaEngineHost:event`. Other native code reaches the engine through `Host::Engine()`.
   - What belongs to the app comes from the library (`AppImage.h`: the bundle folder, dialogs, window classes, the
