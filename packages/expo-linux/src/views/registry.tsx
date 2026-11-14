@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, type ComponentType } from "react";
 import { View, type ViewProps } from "react-native";
+import * as engine from "../engine/modules";
 import { noteMissing } from "../missing";
 import { ActivitySpinner } from "../web/motion/ActivitySpinner";
 import { DockSelection, GlassEffect, GlassGroup, OutsidePressArea, VisualEffect } from "../web/chrome";
@@ -12,8 +13,7 @@ import { PowerUp, WindowBackdrop } from "./shaders";
 
 type ViewByName = ComponentType<never> & { displayName?: string };
 
-const engineViewFiles = import.meta.glob<{ engineViews?: Record<string, ViewByName> }>("../engine/views.{ts,tsx}", { eager: true });
-const engineViews: Record<string, ViewByName> = Object.assign({}, ...Object.values(engineViewFiles).map((file) => file.engineViews ?? {}));
+const engineViews: Record<string, ViewByName> = (engine as { engineViews?: Record<string, ViewByName> }).engineViews ?? {};
 
 const PlainView = forwardRef<View, ViewProps>(function PlainView(props, ref) {
   return <View {...props} ref={ref} />;

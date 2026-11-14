@@ -51,7 +51,7 @@ export const WindowDragRegion = forwardRef<unknown, Props>(function WindowDragRe
       if (!pressed || dragging || e.pointerId !== pressed.pointer) return;
       if (Math.abs(e.screenX - pressed.x) < CLICK_SLOP && Math.abs(e.screenY - pressed.y) < CLICK_SLOP) return;
       dragging = true;
-      void callMain(MODULE, "beginWindowDrag", windowId());
+      void callMain(MODULE, "beginWindowDrag", windowId(), pressed.x, pressed.y);
     };
     const up = (e: PointerEvent) => {
       if (!pressed || e.pointerId !== pressed.pointer) return;

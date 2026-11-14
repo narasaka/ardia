@@ -87,19 +87,35 @@ export function Surface({ fill, fillColors, fillStops, fade, fadeStops, cornerRa
   );
 }
 
-const MATERIAL_FILL: Record<string, string> = {
-  popover: "rgba(246,246,246,0.72)",
-  menu: "rgba(246,246,246,0.72)",
-  hudWindow: "rgba(30,30,30,0.6)",
-  sidebar: "rgba(240,240,240,0.5)",
-  underWindowBackground: "rgba(240,240,240,0.4)",
+const MATERIAL_FILL: Record<"light" | "dark", Record<string, string>> = {
+  light: {
+    popover: "rgba(246,246,246,0.94)",
+    menu: "rgba(246,246,246,0.94)",
+    hudWindow: "rgba(30,30,30,0.82)",
+    fullScreenUI: "rgba(236,236,236,0.94)",
+    sidebar: "rgba(232,232,234,0.97)",
+    windowBackground: "rgb(246,246,246)",
+    contentBackground: "rgb(255,255,255)",
+    underWindowBackground: "rgba(236,236,236,0.97)",
+  },
+  dark: {
+    popover: "rgba(40,40,42,0.94)",
+    menu: "rgba(40,40,42,0.94)",
+    hudWindow: "rgba(24,24,24,0.82)",
+    fullScreenUI: "rgba(36,36,38,0.94)",
+    sidebar: "rgba(38,38,40,0.97)",
+    windowBackground: "rgb(30,30,32)",
+    contentBackground: "rgb(30,30,30)",
+    underWindowBackground: "rgba(32,32,34,0.97)",
+  },
 };
 
 export type VisualEffectProps = ViewProps & { material?: string; blendingMode?: "withinWindow" | "behindWindow"; cornerRadius?: number };
 
-export function VisualEffect({ material = "popover", cornerRadius, style, ...props }: VisualEffectProps) {
+export function VisualEffect({ material = "popover", blendingMode: _blending, cornerRadius, style, ...props }: VisualEffectProps) {
+  const tone = useAppDark() ? "dark" : "light";
   const glass: Style = {
-    backgroundColor: MATERIAL_FILL[material] ?? "rgba(246,246,246,0.6)",
+    backgroundColor: MATERIAL_FILL[tone][material] ?? MATERIAL_FILL[tone].popover,
     backdropFilter: "blur(24px) saturate(180%)",
     WebkitBackdropFilter: "blur(24px) saturate(180%)",
     borderRadius: cornerRadius,

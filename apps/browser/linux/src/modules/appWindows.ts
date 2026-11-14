@@ -160,11 +160,11 @@ function toggleMaximizeWindow(id: string) {
   else window.maximize();
 }
 
-function beginWindowDrag(id: string) {
+function beginWindowDrag(id: string, pressedX?: number, pressedY?: number) {
   const window = appWindow(id);
   if (!window || window.isDestroyed() || window.isFullScreen()) return;
   endWindowDrag();
-  const cursor = screen.getCursorScreenPoint();
+  const cursor = typeof pressedX === "number" && typeof pressedY === "number" ? { x: pressedX, y: pressedY } : screen.getCursorScreenPoint();
   let bounds = window.getBounds();
   if (window.isMaximized()) {
     const share = (cursor.x - bounds.x) / Math.max(1, bounds.width);
@@ -210,6 +210,11 @@ defineModule(MODULE, {
     showWindow: (id: string) => showWindow(id),
     windowCornerRadius: () => CORNER_RADIUS,
     isMaximized: (id: string) => !!appWindow(id)?.isMaximized(),
+    debugWindowState: (id: string) => {
+      const window = appWindow(id);
+      if (!window || window.isDestroyed()) return null;
+      return { visible: window.isVisible(), minimized: window.isMinimized(), maximized: window.isMaximized(), fullScreen: window.isFullScreen(), focused: window.isFocused(), frame: frameOf(window.getBounds()) };
+    },
   },
   async: {
     closeWindow: async (id: string) => closeWindow(id),
@@ -227,7 +232,7 @@ defineModule(MODULE, {
     setWindowTitle: async (id: string, title: string) => appWindow(id)?.setTitle(title || "Ardia"),
     restoreFullScreen: async (ids: string[], focus: string | null) => restoreFullScreen(ids, focus),
     setPageFullScreen: async (id: string, on: boolean) => setPageFullScreen(id, on),
-    beginWindowDrag: async (id: string) => beginWindowDrag(id),
+    beginWindowDrag: async (id: string, pressedX?: number, pressedY?: number) => beginWindowDrag(id, pressedX, pressedY),
     endWindowDrag: async () => endWindowDrag(),
     quit: async () => requestQuit(),
     replyToTerminate: async (ok: boolean) => replyToTerminate(ok),

@@ -29,4 +29,10 @@ export const aroundMain: Record<string, Record<string, (main: Call | null) => un
     closeWindow: (main) => (id: string) => closeWindow(id, main),
     focusWindow: () => (id: string) => focusWindow(id),
   },
+  ArdiaFocus: {
+    claimFocus: () => linuxFocus.claimFocus,
+    saveKeyResponder: () => linuxFocus.saveKeyResponder,
+    restoreKeyResponder: () => linuxFocus.restoreKeyResponder,
+    discardKeyResponder: () => linuxFocus.discardKeyResponder,
+  },
 };
