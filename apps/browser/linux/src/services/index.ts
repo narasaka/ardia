@@ -10,3 +10,4 @@ import "./pagePasswords";
 import "./autofill";
 import "./requests";
 import "./contentBlocker";
+import "./extensions";
