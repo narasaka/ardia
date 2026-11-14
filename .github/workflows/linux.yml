@@ -2,7 +2,7 @@ name: Linux
 
 on:
   push:
-    branches: [linux, linux-dev]
+    branches: [linux]
   pull_request:
     branches: [linux]
   workflow_dispatch:
