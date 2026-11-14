@@ -266,6 +266,35 @@ test("a page that unmounts and mounts again in one tick under the same key close
   await settle();
 });
 
+test("a page that closes while its move to another window still waits is closed without moving, and its key opens again", async () => {
+  let open;
+  createGate = new Promise((resolve) => (open = resolve));
+  const unmountFirst = mountPage("closed-mid-move", { url: "https://a.example/", windowId: "w-one" }, () => {});
+  const unmountMoved = mountPage("closed-mid-move", { url: "https://a.example/", windowId: "w-two" }, () => {});
+  unmountFirst();
+  unmountMoved();
+  createGate = null;
+  open();
+  await settle();
+  await settle();
+  const made = calls.filter((call) => call.args.key === "closed-mid-move" && (call.verb === "tab.close" || call.verb === "tab.create"));
+  assert.deepEqual(
+    made.map((call) => [call.verb, call.windowId]),
+    [
+      ["tab.create", "w-one"],
+      ["tab.close", ""],
+    ],
+    "the closed page is closed once and never made in the window it was moving to",
+  );
+  const events = [];
+  const unmountAgain = mountPage("closed-mid-move", { url: "https://a.example/", windowId: "w-two" }, (name) => events.push(name));
+  await settle();
+  assert.equal(creates("closed-mid-move"), 2, "the same key opens a page again");
+  assert.deepEqual(events, ["ready"]);
+  unmountAgain();
+  await settle();
+});
+
 test("while a page of a window is full screen, the window's other pages count as hidden, and they come back when it leaves", async () => {
   const { setFullScreenPage, hiddenByFullScreen } = await import("../../../../packages/expo-windows/src/engine/covers.ts");
   setFullScreenPage("fs-window", "right", true);
