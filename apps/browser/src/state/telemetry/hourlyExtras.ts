@@ -19,7 +19,7 @@ export const takeHourlyExtras = () => ({ ...takePlatformCounts(), ...takeImportR
 
 type Send = (event: string, props?: Record<string, unknown>, options?: CaptureOptions) => void;
 
-export function usageWithExtras(sendEvent: Send, takeExtras: () => Record<string, number>, now: () => number = Date.now) {
+export function usageWithExtras(sendEvent: Send, takeExtras: () => Record<string, number | undefined>, now: () => number = Date.now) {
   let sentWithCounts = false;
   let since = now();
   const capture: Send = (event, props = {}, options = {}) => {
