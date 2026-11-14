@@ -36,7 +36,7 @@ const KEYS_WHOSE_VALUES_HOLD_COMMAS = [
   "importSafariHome", "importSecret", "cliInstallScript", "legacySource", "bangsUrl", "liveMock",
 ];
 
-const TRACE_AREAS = ["visibility", "pip", "pipZoom", "trafficLights", "profileGate"];
+const TRACE_AREAS = ["visibility", "pip", "pipZoom", "trafficLights", "profileGate", "keys", "menus"];
 const TEST_ONLY_INSTANCE_KEYS = ["updateFeed", "importSourceDir", "importSafariHome"];
 
 export const truthy = (value: string | undefined): boolean => !!value && value !== "0" && value !== "off" && value !== "false";
@@ -149,4 +149,5 @@ let shared: LaunchConfig | null = null;
 export const launchConfig = (): LaunchConfig => (shared ??= read());
 export const testValue = (key: string): string | undefined => launchConfig().test[key];
 export const testFlag = (key: string): boolean => truthy(testValue(key));
+export const tracing = (area: string): boolean => launchConfig().trace.includes(area);
 export const instanceFlag = (key: string): boolean => truthy(launchConfig().instance[key]);

@@ -9,7 +9,7 @@ import { iconPath } from "./modules/ardiaApp";
 import { installLaunchLinks } from "./launchLinks";
 import { launchConfig } from "./launch";
 import { note } from "./log";
-import { dataDirectory } from "./paths";
+import { dataDirectory, hostEnvironment } from "./paths";
 import { installQuitLifecycle } from "./quit";
 import { DESKTOP_FILE } from "./system/desktopEntry";
 import { createHost } from "./windows";
@@ -17,12 +17,12 @@ import { createHost } from "./windows";
 app.setName("Ardia");
 app.setDesktopName(DESKTOP_FILE);
 app.setPath("userData", join(dataDirectory(), "Engine"));
-if (process.env.ARDIA_REMOTE_DEBUGGING_PORT) app.commandLine.appendSwitch("remote-debugging-port", process.env.ARDIA_REMOTE_DEBUGGING_PORT);
+if (hostEnvironment.remoteDebuggingPort) app.commandLine.appendSwitch("remote-debugging-port", hostEnvironment.remoteDebuggingPort);
 
 const sandboxed = !app.commandLine.hasSwitch("no-sandbox");
-note("launch", `${sandboxed ? "sandboxed with" : "no sandbox:"} ${process.env.ARDIA_SANDBOX_REASON ?? (sandboxed ? "Chromium's default" : "--no-sandbox was passed")}`);
+note("launch", `${sandboxed ? "sandboxed with" : "no sandbox:"} ${hostEnvironment.sandboxReason ?? (sandboxed ? "Chromium's default" : "--no-sandbox was passed")}`);
 
-const devServer = process.env.ARDIA_DEV_SERVER;
+const devServer = hostEnvironment.devServer;
 
 async function loadUi(host: BrowserWindow) {
   if (devServer) await host.loadURL(devServer);

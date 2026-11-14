@@ -1,5 +1,6 @@
 import { BrowserWindow, app, shell, type WebContents } from "electron";
 import { emit } from "../bridge";
+import { tracing } from "../launch";
 import { note } from "../log";
 import { appWindow, appWindowIds } from "../windows";
 import { Row } from "./commandTable";
@@ -21,9 +22,34 @@ const state = {
 
 export const keyboardState = state;
 
+type PageWindowResolver = (page: WebContents) => BrowserWindow | null | undefined;
+let pageWindow: PageWindowResolver = () => null;
+
+export function resolvePageWindowsWith(resolver: PageWindowResolver): void {
+  pageWindow = resolver;
+}
+
+function appWindowOrNull(window: BrowserWindow | null | undefined): BrowserWindow | null {
+  return window && !window.isDestroyed() && windowIdOf(window) ? window : null;
+}
+
+let lastActive: BrowserWindow | null = null;
+app.on("browser-window-focus", (_event, window) => {
+  if (windowIdOf(window)) lastActive = window;
+});
+
+export function activeAppWindow(): BrowserWindow | null {
+  const ids = appWindowIds();
+  return appWindowOrNull(BrowserWindow.getFocusedWindow()) ?? appWindowOrNull(lastActive) ?? appWindowOrNull(ids.length ? appWindow(ids[ids.length - 1]!) : null);
+}
+
 export function windowOf(contents: WebContents): BrowserWindow | null {
-  const owner = contents.getType() === "webview" ? contents.hostWebContents : contents;
-  return owner ? BrowserWindow.fromWebContents(owner) : null;
+  if (contents.getType() === "webview") {
+    const embedder = contents.hostWebContents ? BrowserWindow.fromWebContents(contents.hostWebContents) : null;
+    return appWindowOrNull(pageWindow(contents)) ?? appWindowOrNull(embedder) ?? activeAppWindow();
+  }
+  const own = BrowserWindow.fromWebContents(contents);
+  return appWindowOrNull(own) ?? (contents.hostWebContents ? null : activeAppWindow());
 }
 
 export function windowIdOf(window: BrowserWindow | null): string | null {
@@ -186,6 +212,7 @@ export function handleInput(contents: WebContents, input: ElectronInput): boolea
 
 export function watchKeys(contents: WebContents): void {
   contents.on("before-input-event", (event, input) => {
+    if (tracing("keys")) note("keys", `${contents.getType()} ${contents.id} host=${contents.hostWebContents?.id ?? "-"} window=${windowIdOf(windowOf(contents))} ${input.type} ${input.key}`);
     if (handleInput(contents, input as ElectronInput)) event.preventDefault();
   });
 }

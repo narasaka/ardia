@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { hostEnvironment, xdgConfigHome, xdgDataHome } from "../paths";
 
 export const DESKTOP_FILE = "ardia.desktop";
 export const WINDOW_CLASS = "Ardia";
@@ -10,14 +10,14 @@ export const MIME_TYPES = ["text/html", "text/xml", "application/xhtml+xml", "x-
 
 const run = promisify(execFile);
 
-const dataHome = () => process.env.XDG_DATA_HOME || join(homedir(), ".local/share");
-const configHome = () => process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+const dataHome = xdgDataHome;
+const configHome = xdgConfigHome;
 
 export const userDesktopFile = () => join(dataHome(), "applications", DESKTOP_FILE);
 export const autostartFile = () => join(configHome(), "autostart", DESKTOP_FILE);
 
 export function launcherPath(): string {
-  return process.env.APPIMAGE || process.env.ARDIA_LAUNCHER || process.execPath;
+  return hostEnvironment.appImage || hostEnvironment.launcher || process.execPath;
 }
 
 const quoted = (path: string) => (/[\s"'\\$`]/.test(path) ? `"${path.replace(/(["\\$`])/g, "\\$1")}"` : path);
@@ -62,7 +62,7 @@ function installIcons(): void {
 }
 
 export async function ensureUserDesktopEntry(): Promise<void> {
-  if (installedSystemWide() && !process.env.APPIMAGE) return;
+  if (installedSystemWide() && !hostEnvironment.appImage) return;
   mkdirSync(join(dataHome(), "applications"), { recursive: true });
   writeFileSync(userDesktopFile(), desktopEntry());
   installIcons();

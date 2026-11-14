@@ -2,7 +2,7 @@ import { Notification, nativeImage, shell } from "electron";
 import { randomUUID } from "node:crypto";
 import { defineModule, emit } from "../bridge";
 import { activation, note } from "../log";
-import { isBackground } from "../paths";
+import { hostEnvironment, isBackground } from "../paths";
 import { focusAppWindow } from "../windowFocus";
 
 type NotificationOptions = {
@@ -62,7 +62,7 @@ async function removeNotifications(ids: string[]): Promise<void> {
 
 async function openNotificationSettings(): Promise<void> {
   if (isBackground()) return;
-  const desktop = (process.env.XDG_CURRENT_DESKTOP ?? "").toLowerCase();
+  const desktop = hostEnvironment.currentDesktop;
   if (desktop.includes("kde")) await shell.openExternal("systemsettings://kcm_notifications").catch(() => {});
   else {
     const { spawn } = await import("node:child_process");
