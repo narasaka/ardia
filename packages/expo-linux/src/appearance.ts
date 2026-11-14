@@ -27,12 +27,11 @@ addNativeListener("ArdiaShell", "onAppEvent", (payload) => {
 
 export const appDark = () => dark;
 
+export function onAppDarkChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => void listeners.delete(listener);
+}
+
 export function useAppDark(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
-    },
-    appDark,
-  );
+  return useSyncExternalStore(onAppDarkChange, appDark);
 }

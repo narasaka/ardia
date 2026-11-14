@@ -10,7 +10,8 @@ type OpenOptions = { frame?: Frame | null; kind?: Kind; size?: [number, number];
 type WindowEvent = Record<string, unknown> & { type: string; id: string };
 
 const MODULE = "ArdiaAppWindows";
-const CORNER_RADIUS = 10;
+const CORNER_RADIUS = 19;
+const FRAME_CORNER_RADIUS = 12;
 const CASCADE_STEP = 28;
 const DRAG_TICK_MS = 8;
 const FRAME_SETTLE_MS = 120;
@@ -227,7 +228,7 @@ defineModule(MODULE, {
       const window = appWindow(id);
       return window && !window.isDestroyed() ? frameOf(window.getBounds()) : null;
     },
-    frameCornerRadius: async (id: string) => (appWindow(id)?.isMaximized() || appWindow(id)?.isFullScreen() ? 0 : CORNER_RADIUS),
+    frameCornerRadius: async (id: string) => (appWindow(id)?.isMaximized() || appWindow(id)?.isFullScreen() ? 0 : FRAME_CORNER_RADIUS),
     windowIds: async () => appWindowIds(),
     setWindowTitle: async (id: string, title: string) => appWindow(id)?.setTitle(title || "Ardia"),
     restoreFullScreen: async (ids: string[], focus: string | null) => restoreFullScreen(ids, focus),

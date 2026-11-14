@@ -1,5 +1,7 @@
 import { AppRegistry } from "react-native";
+import { appDark, onAppDarkChange } from "../appearance";
 import { callMain, callMainSync } from "../bridge";
+import { addNativeListener } from "../events";
 import { adoptAppWindow, forgetAppWindow } from "../host/acrossWindows";
 import { mirrorStylesInto, stopMirroring } from "../host/documentStyles";
 
@@ -16,6 +18,29 @@ const REGISTER_TRIES = 100;
 
 const mounted = new Map<string, Mounted>();
 const kinds = new Map<string, string>();
+const squared = new Map<string, { maximized: boolean; fullScreen: boolean }>();
+
+type WindowEvent = { type?: string; id?: string; on?: boolean };
+
+function applyShape(id: string) {
+  const doc = appWindowDocument(id);
+  if (!doc) return;
+  const state = squared.get(id);
+  doc.documentElement.dataset.ardiaShape = state?.maximized || state?.fullScreen ? "square" : "round";
+  doc.documentElement.dataset.ardiaDark = String(appDark());
+}
+
+addNativeListener(MODULE, "onWindowEvent", (payload) => {
+  const event = payload as WindowEvent | null;
+  if (!event?.id || (event.type !== "maximized" && event.type !== "fullScreen")) return;
+  const state = squared.get(event.id) ?? { maximized: false, fullScreen: false };
+  squared.set(event.id, event.type === "maximized" ? { ...state, maximized: !!event.on } : { ...state, fullScreen: !!event.on });
+  applyShape(event.id);
+});
+
+onAppDarkChange(() => {
+  for (const id of mounted.keys()) applyShape(id);
+});
 
 const rootOf = (realm: Realm) => realm.document.getElementById("root");
 
@@ -78,6 +103,7 @@ function unmount(id: string, realm: Realm) {
   const entry = mounted.get(id);
   if (!entry || entry.realm !== realm) return;
   mounted.delete(id);
+  squared.delete(id);
   try {
     entry.root?.unmount();
   } catch (error) {
@@ -110,6 +136,8 @@ export async function openWindow(id: string, options: OpenOptions = {}): Promise
   adoptAppWindow(realm);
   const entry: Mounted = { realm, root: null, shown: false };
   mounted.set(id, entry);
+  squared.set(id, { maximized: !!callMainSync(MODULE, "isMaximized", id), fullScreen: false });
+  applyShape(id);
   realm.addEventListener("pagehide", () => unmount(id, realm));
   entry.root = AppRegistry.runApplication(APP_KEY, { rootTag, initialProps: { windowId: id } }) as unknown as { unmount(): void };
   showAfterFirstPaint(id, entry, animated);
