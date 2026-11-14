@@ -1,3 +1,4 @@
+import { capture as send } from "./client";
 import { takeDownloadsPanelCounts } from "./downloadsPanelCounts";
 import { takeExportCounts } from "./exportCounts";
 import { takeDialogPageCounts } from "./dialogPageCounts";
@@ -12,4 +13,30 @@ import { takeSyncFileCounts } from "./syncFileCounts";
 
 export { watchPlatformCounts };
 
+export const USAGE_COUNTS_EVENT = "usage_counts";
+
 export const takeHourlyExtras = () => ({ ...takePlatformCounts(), ...takeImportRuns(), ...takeProfileDataCounts(), ...takeExportCounts(), ...takeInlineCompletionCounts(), ...takeFirstRunCounts(), ...takeMemoryTrimCounts(), ...takeDownloadsPanelCounts(), ...takeExternalAppCounts(), ...takeDialogPageCounts(), ...takeSyncFileCounts() });
+
+type Send = typeof send;
+
+export function usageWithExtras(sendEvent: Send, takeExtras: () => Record<string, number | undefined>, now: () => number = Date.now) {
+  let sentWithCounts = false;
+  let since = now();
+  const capture: Send = (event, props = {}, options = {}) => {
+    if (event !== USAGE_COUNTS_EVENT) return sendEvent(event, props, options);
+    sentWithCounts = true;
+    sendEvent(event, { ...takeExtras(), ...props }, options);
+  };
+  const withHourlyExtras = (emitCounts: () => void) => {
+    sentWithCounts = false;
+    emitCounts();
+    if (!sentWithCounts) {
+      const extras = takeExtras();
+      if (Object.values(extras).some(Boolean)) sendEvent(USAGE_COUNTS_EVENT, { ...extras, period_minutes: Math.round((now() - since) / 60_000) });
+    }
+    since = now();
+  };
+  return { capture, withHourlyExtras };
+}
+
+export const { capture, withHourlyExtras } = usageWithExtras(send, takeHourlyExtras);

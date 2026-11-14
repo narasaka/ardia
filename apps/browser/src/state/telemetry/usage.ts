@@ -5,7 +5,8 @@ import { useTranslate } from "../site/translate";
 import { useBrowser } from "../browser/store";
 import { takeSnapshotWrites, useSync } from "../sync/engine";
 import { takeSyncCodeCounts } from "../sync/recoveryKit";
-import { capture, endSession, flush, isSharing, markSettingsSnapshot, settingsSnapshotDay, startClient } from "./client";
+import { endSession, flush, isSharing, markSettingsSnapshot, settingsSnapshotDay, startClient } from "./client";
+import { capture, withHourlyExtras } from "./hourlyExtras";
 import { reportLocalStore, startLocalStore } from "./localStoreReport";
 import { startWatchChecks } from "./watch";
 import { appIconSetting, currentThemeFileSnapshot, customColorProfiles, SETTINGS_SNAPSHOT_EVENT, settingsSnapshot } from "./settingsSnapshot";
@@ -21,7 +22,6 @@ import type { SavedContext } from "./savedContext";
 import { splitTabIds } from "../splits/splits";
 import { windowsRealignedToAutoHideTabsAtLaunch } from "../session/persist";
 import { takeAutoHideTabsChoices, takeTornOffWindowsKeptAutoHide } from "./autoHideTabsChoices";
-import { takeHourlyExtras } from "./hourlyExtras";
 import { takeTabSwitcherOpensInWebKit } from "./tabSwitcherOpens";
 import { takeTabSleepCounts } from "./tabSleepCounts";
 import { noteAutoPictureInPictureNothingPlaying, takePictureInPictureCounts } from "./pictureInPictureCounts";
@@ -52,12 +52,13 @@ const NO_COUNTS = { tabs: 0, windows: 0, fullScreens: 0, sidebarPeeks: 0, sideba
 let counts = { ...NO_COUNTS }, countsSince = Date.now();
 
 function emitCounts() {
-  const snapshots = takeSnapshotWrites(), tornOffKept = takeTornOffWindowsKeptAutoHide(), switcherOpensInWebKit = takeTabSwitcherOpensInWebKit(), stuckDrags = takeStuckDragCounts(), urlCopies = takeUrlCopyCounts(), configProblemToasts = takeConfigProblemToastCounts(), stripHoverCards = takeStripHoverCardCounts(), externalAppRequests = takeExternalAppRequests(), tabSleeps = takeTabSleepCounts(), syncCodes = takeSyncCodeCounts(), escapeCloses = takeLittleArdiaEscapeCloses(), liveCompletedTabsClosed = takeLiveCompletedTabsClosed(), liveHides = takeLiveHideCounts(), tidyTabs = takeTidyTabsCounts(), webKitFaults = takeWebKitMediaFaultCounts(), airTraffic = takeAirTrafficCounts(), cliCounts = takeCliCounts(), tabStrip = takeTabStripCounts(), extras = takeHourlyExtras();
+  const snapshots = takeSnapshotWrites(), tornOffKept = takeTornOffWindowsKeptAutoHide(), switcherOpensInWebKit = takeTabSwitcherOpensInWebKit(), stuckDrags = takeStuckDragCounts(), urlCopies = takeUrlCopyCounts(), configProblemToasts = takeConfigProblemToastCounts(), stripHoverCards = takeStripHoverCardCounts(), externalAppRequests = takeExternalAppRequests(), tabSleeps = takeTabSleepCounts(), syncCodes = takeSyncCodeCounts(), escapeCloses = takeLittleArdiaEscapeCloses(), liveCompletedTabsClosed = takeLiveCompletedTabsClosed(), liveHides = takeLiveHideCounts(), tidyTabs = takeTidyTabsCounts(), webKitFaults = takeWebKitMediaFaultCounts(), airTraffic = takeAirTrafficCounts(), cliCounts = takeCliCounts(), tabStrip = takeTabStripCounts();
   const { nothingPlaying: autoPictureInPictureNothingPlaying, backToTab, clickSkips } = takePictureInPictureCounts();
   counts.autoHideTabsToggles += takeAutoHideTabsChoices();
-  if (Object.values(counts).some(Boolean) || tornOffKept > 0 || Object.values(tabSleeps).some(Boolean) || Object.values(syncCodes).some(Boolean) || Object.values(stuckDrags).some(Boolean) || Object.values(escapeCloses).some(Boolean) || Object.values(liveHides).some(Boolean) || Object.values(tidyTabs).some(Boolean) || Object.values(tabStrip).some(Boolean) || Object.keys(webKitFaults).length || Object.values(airTraffic).some(Boolean) || Object.values(cliCounts).some(Boolean) || Object.values(externalAppRequests).some(Boolean) || urlCopies.url_copies || configProblemToasts.config_problem_toasts || configProblemToasts.config_problem_toast_dismissals || stripHoverCards.tab_strip_hover_cards || liveCompletedTabsClosed || snapshots.count || switcherOpensInWebKit || autoPictureInPictureNothingPlaying || backToTab.chromium || backToTab.webkit || clickSkips.back || clickSkips.ahead || Object.values(extras).some(Boolean)) {
+  if (Object.values(counts).some(Boolean) || tornOffKept > 0 || Object.values(tabSleeps).some(Boolean) || Object.values(syncCodes).some(Boolean) || Object.values(stuckDrags).some(Boolean) || Object.values(escapeCloses).some(Boolean) || Object.values(liveHides).some(Boolean) || Object.values(tidyTabs).some(Boolean) || Object.values(tabStrip).some(Boolean) || Object.keys(webKitFaults).length || Object.values(airTraffic).some(Boolean) || Object.values(cliCounts).some(Boolean) || Object.values(externalAppRequests).some(Boolean) || urlCopies.url_copies || configProblemToasts.config_problem_toasts || configProblemToasts.config_problem_toast_dismissals || stripHoverCards.tab_strip_hover_cards || liveCompletedTabsClosed || snapshots.count || switcherOpensInWebKit || autoPictureInPictureNothingPlaying || backToTab.chromium || backToTab.webkit || clickSkips.back || clickSkips.ahead) {
     capture("usage_counts", {
-      tabs_opened: counts.tabs, windows_opened: counts.windows,
+      tabs_opened: counts.tabs,
+      windows_opened: counts.windows,
       full_screens_entered: counts.fullScreens,
       sidebar_peeks: counts.sidebarPeeks,
       sidebar_peek_bounces: counts.sidebarPeekBounces,
@@ -107,7 +108,7 @@ function emitCounts() {
       settings_search_keyboard_reveals: counts.settingsSearchKeyboardReveals, settings_search_click_reveals: counts.settingsSearchClickReveals, settings_searches: counts.settingsSearches, settings_searches_empty: counts.settingsSearchesEmpty, settings_search_top_picks: counts.settingsSearchTopPicks, settings_search_top3_picks: counts.settingsSearchTop3Picks, settings_search_lower_picks: counts.settingsSearchLowerPicks,
       auto_pip_kept_visible: counts.autoPictureInPictureKept, auto_pip_stayed_on_app_switch: counts.autoPictureInPictureStayedOnAppSwitch, selection_close_keys: counts.selectionCloseKeys, selection_close_key_tabs: counts.selectionCloseKeyTabs,
       onboarding_imports: counts.onboardingImports, onboarding_helium_imports: counts.onboardingHeliumImports, onboarding_glass_picks: counts.onboardingGlassPicks, onboarding_classic_picks: counts.onboardingClassicPicks, onboarding_tinted_glass_picks: counts.onboardingTintedGlassPicks, onboarding_steps_completed: counts.onboardingStepsCompleted, onboarding_steps_skipped: counts.onboardingStepsSkipped, onboarding_redo_opened: counts.onboardingRedoOpened, onboarding_redo_completed: counts.onboardingRedoCompleted, onboarding_redo_cancelled: counts.onboardingRedoCancelled,
-      ...extras, update_channel_switches: counts.updateChannelSwitches, update_channel_switch_offers: counts.updateChannelSwitchOffers, update_channel_switch_up_to_date: counts.updateChannelSwitchUpToDate, update_channel_switch_check_failures: counts.updateChannelSwitchCheckFailures, clean_up_suggestion_shows: counts.cleanUpSuggestionShows, clean_up_suggestion_once: counts.cleanUpSuggestionOnce, clean_up_suggestion_daily: counts.cleanUpSuggestionDaily, clean_up_suggestion_not_now: counts.cleanUpSuggestionNotNow, clean_up_suggestion_never_again: counts.cleanUpSuggestionNeverAgain, clean_up_undos: counts.cleanUpUndos, link_tabs_matched: counts.linkTabsMatched, link_tab_waits_skipped: counts.linkTabWaitsSkipped, link_tab_wait_timeouts: counts.linkTabWaitTimeouts, history_search_focus_requests: counts.historySearchFocusRequests, history_search_focused: counts.historySearchFocused, period_minutes: Math.round((Date.now() - countsSince) / 60_000),
+      update_channel_switches: counts.updateChannelSwitches, update_channel_switch_offers: counts.updateChannelSwitchOffers, update_channel_switch_up_to_date: counts.updateChannelSwitchUpToDate, update_channel_switch_check_failures: counts.updateChannelSwitchCheckFailures, clean_up_suggestion_shows: counts.cleanUpSuggestionShows, clean_up_suggestion_once: counts.cleanUpSuggestionOnce, clean_up_suggestion_daily: counts.cleanUpSuggestionDaily, clean_up_suggestion_not_now: counts.cleanUpSuggestionNotNow, clean_up_suggestion_never_again: counts.cleanUpSuggestionNeverAgain, clean_up_undos: counts.cleanUpUndos, link_tabs_matched: counts.linkTabsMatched, link_tab_waits_skipped: counts.linkTabWaitsSkipped, link_tab_wait_timeouts: counts.linkTabWaitTimeouts, history_search_focus_requests: counts.historySearchFocusRequests, history_search_focused: counts.historySearchFocused, period_minutes: Math.round((Date.now() - countsSince) / 60_000),
     });
   }
   counts = { ...NO_COUNTS };
@@ -327,7 +328,7 @@ let launchCrashRead: ReturnType<typeof setTimeout> | undefined;
 
 function hourly() {
   snapshotSettings();
-  emitCounts();
+  withHourlyExtras(emitCounts);
   emitOmniboxLatency();
   emitJourneys();
   emitTabPresses();
@@ -377,7 +378,7 @@ export function startUsage() {
 }
 
 export function sessionEnding() {
-  emitCounts();
+  withHourlyExtras(emitCounts);
   emitOmniboxLatency();
   emitTabPresses();
   journeysEnding();
