@@ -13,8 +13,6 @@
 #include <thread>
 #include <utility>
 
-#include "LaunchLog.h"
-
 namespace Ardia::DialogParts {
 
 constexpr UINT OwnerWatchMs = 250;
@@ -107,8 +105,6 @@ inline void CALLBACK WatchOwner(HWND, UINT, UINT_PTR, DWORD) noexcept {
   }
   std::function<void()> abandon = std::move(state.abandon);
   state.abandon = nullptr;
-  std::wstring why = ownerGone ? L"its window is gone" : released ? L"released" : L"the app is stopping";
-  LaunchLog::Write(L"dialog", (abandon ? L"cancelling a dialog: " : L"a dialog has nothing to cancel yet: ") + why);
   if (abandon) abandon();
 }
 
@@ -281,9 +277,7 @@ bool RunModal(HWND owner, TShow &&show) noexcept {
         ComApartment apartment;
         OwnerSlot slot(owner);
         show(slot.Usable() && !Stopping());
-        if (Stopping()) LaunchLog::Write(L"dialog", L"a dialog returned while the app is stopping");
       }
-      if (Stopping()) LaunchLog::Write(L"dialog", L"a dialog's thread finished while the app is stopping");
       ModalRegistry::Shared().threads--;
     }).detach();
     return true;
