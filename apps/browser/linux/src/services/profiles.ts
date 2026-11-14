@@ -3,11 +3,11 @@ import { join } from "node:path";
 import { dataDirectory } from "../paths";
 
 const PRIVATE_PREFIX = "incognito";
+const OFF_THE_RECORD = "@";
 const ARDIA_ID = /^[a-z0-9-]{1,238}$/;
 const DEFAULT_FOLDER = "Default";
-const DEFAULT_PARTITION = "persist:default";
 
-export const isPrivateProfile = (profile: string) => profile.startsWith(PRIVATE_PREFIX);
+export const isPrivateProfile = (profile: string) => profile.startsWith(PRIVATE_PREFIX) || profile.includes(OFF_THE_RECORD);
 
 export function originalProfile(profile: string): string {
   if (!isPrivateProfile(profile)) return profile;
@@ -28,17 +28,21 @@ export function profileDirectory(profile: string): string {
   return join(profilesDirectory(), name);
 }
 
+const PERSISTENT_PARTITION = "persist:ardia";
+const PRIVATE_PARTITION = "ardia-private";
+
 export function partitionFor(profile: string): string {
-  if (isPrivateProfile(profile)) return profile;
-  return profile ? `persist:${profile}` : DEFAULT_PARTITION;
+  if (isPrivateProfile(profile)) return `${PRIVATE_PARTITION}-${encodeURIComponent(profile)}`;
+  return profile ? `${PERSISTENT_PARTITION}-${encodeURIComponent(profile)}` : PERSISTENT_PARTITION;
 }
 
 export const sessionFor = (profile: string): Session => session.fromPartition(partitionFor(profile));
 
 export function profileOfPartition(partition: string): string | null {
-  if (partition === DEFAULT_PARTITION) return "";
-  if (partition.startsWith("persist:")) return partition.slice("persist:".length);
-  return isPrivateProfile(partition) ? partition : null;
+  if (partition === PERSISTENT_PARTITION) return "";
+  if (partition.startsWith(`${PERSISTENT_PARTITION}-`)) return decodeURIComponent(partition.slice(PERSISTENT_PARTITION.length + 1));
+  if (partition.startsWith(`${PRIVATE_PARTITION}-`)) return decodeURIComponent(partition.slice(PRIVATE_PARTITION.length + 1));
+  return null;
 }
 
 export function engineError(message: string): Error {

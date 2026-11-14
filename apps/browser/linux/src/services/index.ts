@@ -4,3 +4,6 @@ import "./bookmarks";
 import "./profileData";
 import "./sites";
 import "./search";
+import "./guests";
+import "./passwords";
+import "./pagePasswords";
