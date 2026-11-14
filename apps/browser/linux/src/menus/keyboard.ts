@@ -1,5 +1,7 @@
 import { BrowserWindow, app, shell, type WebContents } from "electron";
 import { emit } from "../bridge";
+import { confirmWithUser } from "../modules/dialogs";
+import { isQuitting, requestQuit } from "../quit";
 import { tracing } from "../launch";
 import { note } from "../log";
 import { appWindow, appWindowIds } from "../windows";
@@ -168,6 +170,24 @@ function captureSwitcherKey(press: KeyPress, window: BrowserWindow | null): bool
   return true;
 }
 
+const isQuitPress = (press: KeyPress) => press.fixed === "q" && (press.modifiers === Modifier.Control || press.modifiers === (Modifier.Control | Modifier.Shift));
+
+let askingToQuit = false;
+
+async function quitFromKeyboard(): Promise<void> {
+  if (isQuitting() || askingToQuit) return;
+  if (!menuStore.warnBeforeQuitting) return requestQuit();
+  askingToQuit = true;
+  try {
+    const answer = await confirmWithUser({ title: "Quit Ardia?", message: "Your windows and tabs open again next time.", confirmTitle: "Quit", cancelTitle: "Cancel", suppression: "Don’t ask again" });
+    if (!answer.confirmed) return;
+    if (answer.suppressed) emitAppEvent({ type: "quitWarningSuppressed" });
+    requestQuit();
+  } finally {
+    askingToQuit = false;
+  }
+}
+
 const bareEscape = (press: KeyPress) => press.fixed === ESCAPE && press.modifiers === 0;
 
 function undoReopensClosedTab(press: KeyPress, contents: WebContents, window: BrowserWindow | null): boolean {
@@ -206,6 +226,10 @@ export function handleInput(contents: WebContents, input: ElectronInput): boolea
     emitCommand("reopenClosedTab", null, windowIdOf(window));
     handled = true;
   } else handled = dispatch(press, window);
+  if (!handled && isQuitPress(press)) {
+    void quitFromKeyboard();
+    handled = true;
+  }
   if (handled) state.swallowedKeyUps.add(input.code);
   return handled;
 }

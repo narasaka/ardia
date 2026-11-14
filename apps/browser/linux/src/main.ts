@@ -1,4 +1,4 @@
-import { app, nativeImage, type BrowserWindow } from "electron";
+import { Menu, app, nativeImage, type BrowserWindow } from "electron";
 import { join } from "node:path";
 import { installBridge } from "./bridge";
 import { pruneCrashDumps, startCrashReporter } from "./crashes";
@@ -42,6 +42,7 @@ if (!app.requestSingleInstanceLock({ dataDirectory: dataDirectory() })) {
     const icon = nativeImage.createFromPath(iconPath());
     if (!icon.isEmpty()) window.setIcon(icon);
   });
+  Menu.setApplicationMenu(null);
   app.whenReady().then(() => {
     pruneCrashDumps();
     installBridge();

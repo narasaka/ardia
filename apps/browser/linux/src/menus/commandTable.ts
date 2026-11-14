@@ -145,6 +145,7 @@ export const COMMAND_ROWS: CommandRow[] = [
 ];
 
 export const SYSTEM_ROWS: SystemRow[] = [
+  { title: "Quit Ardia", path: "Ardia", linux: "ctrl+q" },
   { title: "Undo", path: "Edit", linux: "ctrl+z" },
   { title: "Redo", path: "Edit", linux: "ctrl+shift+z" },
   { title: "Cut", path: "Edit", linux: "ctrl+x" },
