@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "process-tree.ps1")
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $testBuild = Join-Path (Split-Path -Parent (Resolve-Path -LiteralPath $App).Path) "Ardia.test-build"
 New-Item -ItemType File -Force -Path $testBuild | Out-Null
@@ -549,21 +550,9 @@ function Wait-GateLine([object]$Run, [string]$CaseLog, [string]$Pattern) {
 
 function Stop-Tree([int]$Id) {
   $running = @(Get-CimInstance Win32_Process -Property ProcessId, ParentProcessId, CreationDate -OperationTimeoutSec 15 -ErrorAction SilentlyContinue)
-  $started = @{}
-  foreach ($process in $running) { $started[[int]$process.ProcessId] = $process.CreationDate }
-  $tree = New-Object 'System.Collections.Generic.List[int]'
-  $tree.Add($Id)
-  for ($next = 0; $next -lt $tree.Count; $next++) {
-    $parent = $tree[$next]
-    foreach ($process in $running) {
-      $child = [int]$process.ProcessId
-      if ([int]$process.ParentProcessId -ne $parent -or $tree.Contains($child)) { continue }
-      if ($started[$parent] -and $process.CreationDate -and $process.CreationDate -lt $started[$parent]) { continue }
-      $tree.Add($child)
-    }
-  }
-  Write-Host "stopping $($tree.Count) process(es) under $Id"
-  for ($last = $tree.Count - 1; $last -ge 0; $last--) { Stop-Process -Id $tree[$last] -Force -ErrorAction SilentlyContinue }
+  $order = Get-StopOrder $Id $running
+  Write-Host "stopping $($order.Count) process(es) under $Id"
+  foreach ($process in $order) { Stop-Process -Id $process -Force -ErrorAction SilentlyContinue }
 }
 
 function Stop-GateLaunch([object]$Run) {
