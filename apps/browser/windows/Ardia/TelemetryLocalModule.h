@@ -111,9 +111,10 @@ class TelemetryLocalStore {
     return true;
   }
 
+  static void Drain() noexcept { Queue().Sync([] {}); }
+
   static void Append(std::string day, std::string text) noexcept {
     if (!ValidDay(day) || text.empty()) return;
-    RegisterDrainOnExit();
     Queue().Async([day = std::move(day), text = std::move(text)]() { Write(day, text); });
   }
 
@@ -232,14 +233,6 @@ class TelemetryLocalStore {
   static SerialQueue &Queue() noexcept {
     static SerialQueue *queue = new SerialQueue();
     return *queue;
-  }
-
-  static void RegisterDrainOnExit() noexcept {
-    static const bool registered = [] {
-      std::atexit([] { Queue().Sync([] {}); });
-      return true;
-    }();
-    (void)registered;
   }
 
   static std::optional<std::filesystem::path> Directory() noexcept {

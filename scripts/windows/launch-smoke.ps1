@@ -490,6 +490,15 @@ try {
   $env:ARDIA_TEST = ""
   if (-not $check.WaitForExit($SelfCheckSeconds * 1000)) { $failures += "the self-check did not finish within $SelfCheckSeconds s" }
   elseif ($check.ExitCode -ne 0) { $failures += "the self-check launch exited with code $($check.ExitCode)" }
+  else {
+    $ending = Select-String -LiteralPath $checkLog -Pattern "^launch (\d+) process ending" | Select-Object -Last 1
+    if ($ending) {
+      $lived = [int](($check.ExitTime - $check.StartTime).TotalMilliseconds)
+      $after = $lived - [int]$ending.Matches[0].Groups[1].Value
+      Write-Host "the self-check process exited $after ms after the app ended"
+      if ($after -gt 10000) { $failures += "the self-check process took $after ms to exit after the app ended (#1706)" }
+    }
+  }
 } finally {
   try {
     if ($check -and -not $check.HasExited) {
