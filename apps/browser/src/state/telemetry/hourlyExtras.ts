@@ -1,4 +1,4 @@
-import { capture as send, type CaptureOptions } from "./client";
+import { capture as send } from "./client";
 import { takeDownloadsPanelCounts } from "./downloadsPanelCounts";
 import { takeExportCounts } from "./exportCounts";
 import { takeDialogPageCounts } from "./dialogPageCounts";
@@ -17,7 +17,7 @@ export const USAGE_COUNTS_EVENT = "usage_counts";
 
 export const takeHourlyExtras = () => ({ ...takePlatformCounts(), ...takeImportRuns(), ...takeProfileDataCounts(), ...takeExportCounts(), ...takeInlineCompletionCounts(), ...takeFirstRunCounts(), ...takeMemoryTrimCounts(), ...takeDownloadsPanelCounts(), ...takeExternalAppCounts(), ...takeDialogPageCounts(), ...takeSyncFileCounts() });
 
-type Send = (event: string, props?: Record<string, unknown>, options?: CaptureOptions) => void;
+type Send = typeof send;
 
 export function usageWithExtras(sendEvent: Send, takeExtras: () => Record<string, number | undefined>, now: () => number = Date.now) {
   let sentWithCounts = false;
