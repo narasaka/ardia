@@ -605,7 +605,10 @@ Answered on Windows since the engine took Windows paths (`windows-engine-2026111
     executable, so its prompt shows no icon. Like Chromium, it knows only
     schemes whose `HKCR` key carries `URL Protocol`, so a file type's ProgID can't pose as a link scheme, and it
     refuses one-letter schemes (drive letters).
-  - **Prompt:** the Mac's prompt shows in the Mac's words. "Always allow" is offered only for an https or loopback
+  - **Prompt:** the Mac's prompt shows in the Mac's words. Like every page prompt it ignores input for half a second
+    after it appears and after an Ardia window becomes active; the window becoming active again because the user
+    clicked from one of its own page windows back into it doesn't count (`WindowManager.h` marks that `focus` event
+    `fromPage`, and `state/site/promptGuard.ts` skips it), so the first click on the prompt works. "Always allow" is offered only for an https or loopback
     site, outside private windows, and kept per profile in `external-app-allowances.json`; deleting a profile
     forgets them. A remembered site opens the app without asking only when the request had a user gesture.
   - **Lifetime:** an ask belongs to its page and is dropped when the page closes. Before any launch the engine must

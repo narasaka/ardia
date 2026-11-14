@@ -702,7 +702,13 @@ struct WindowManager {
     }
   }
 
-  void Activated(HWND hwnd) noexcept {
+  static bool OwnPageWindow(HWND hwnd, HWND page) noexcept {
+    if (!page || GetWindow(page, GW_OWNER) != hwnd) return false;
+    wchar_t name[16] = {};
+    return GetClassNameW(page, name, 16) > 0 && std::wstring_view{name}.starts_with(L"Chrome_");
+  }
+
+  void Activated(HWND hwnd, HWND previous) noexcept {
     ManagedWindow *entry = FindByHwnd(hwnd);
     if (!entry) return;
     m_activeId = entry->id;
@@ -714,6 +720,7 @@ struct WindowManager {
     winrt::Microsoft::ReactNative::JSValueObject event;
     event["type"] = "focus";
     event["id"] = entry->id;
+    if (OwnPageWindow(hwnd, previous)) event["fromPage"] = true;
     EmitWindow(std::move(event));
   }
 
@@ -963,7 +970,7 @@ struct WindowManager {
       manager->m_captionPressed = nullptr;
     }
     if (message == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE && DialogParts::BringModalForward(hwnd)) return 0;
-    if (message == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) manager->Activated(hwnd);
+    if (message == WM_ACTIVATE && LOWORD(wParam) != WA_INACTIVE) manager->Activated(hwnd, reinterpret_cast<HWND>(lParam));
     if (message == WM_SIZE && wParam != SIZE_MINIMIZED) manager->ArrangeToClient(hwnd, LOWORD(lParam), HIWORD(lParam));
     if (message == WM_ACTIVATEAPP && wParam == FALSE) manager->EmitApp("resignActive");
     return DefSubclassProc(hwnd, message, wParam, lParam);

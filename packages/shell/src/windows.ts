@@ -11,7 +11,7 @@ export type WindowControlsNative = {
 };
 
 export type WindowEvent =
-  | { type: "focus"; id: string }
+  | { type: "focus"; id: string; fromPage?: boolean }
   | { type: "close"; id: string }
   | { type: "frame"; id: string; frame: [number, number, number, number] }
   | { type: "fullScreen"; id: string; on: boolean }
