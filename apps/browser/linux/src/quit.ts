@@ -56,5 +56,10 @@ export function installQuitLifecycle(): void {
     event.preventDefault();
     requestQuit();
   });
-  for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const) process.on(signal, () => requestQuit());
+  for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"] as const)
+    process.on(signal, () => {
+      if (!quitting) return requestQuit();
+      note("quit", `${signal} again while quitting; quitting now`);
+      finish();
+    });
 }
