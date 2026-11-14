@@ -9,6 +9,7 @@
     "build:ui": "vite build --config renderer/vite.config.ts",
     "build": "pnpm build:ui && pnpm build:main",
     "dev": "node scripts/dev.mjs",
+    "package": "node scripts/package.mjs",
     "start": "electron .",
     "typecheck": "tsc -p ."
   },
@@ -35,6 +36,7 @@
     "@types/react-dom": "~19.1.7",
     "@vitejs/plugin-react": "^5.0.4",
     "electron": "45.3.2",
+    "electron-builder": "26.18.0",
     "esbuild": "^0.28.2",
     "typescript": "~5.9.2",
     "vite": "^7.1.9"

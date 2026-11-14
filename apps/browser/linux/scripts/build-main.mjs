@@ -21,7 +21,7 @@ await build({
     __ARDIA_BUILD__: JSON.stringify(appBuild),
     __ARDIA_NATIVE_API_VERSION__: String(nativeApiVersion),
     __ARDIA_UPDATE_REPOSITORY__: JSON.stringify(process.env.ARDIA_UPDATE_REPOSITORY || process.env.GITHUB_REPOSITORY || "narasaka/ardia"),
-    __ARDIA_DEBUG__: String(process.env.NODE_ENV !== "production" && !process.env.ARDIA_RELEASE),
+    __ARDIA_DEBUG__: String(process.env.ARDIA_DEBUG_BUILD === "1"),
   },
 });
 

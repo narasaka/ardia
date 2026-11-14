@@ -1,0 +1,8 @@
+abi <abi/4.0>,
+include <tunables/global>
+
+profile ardia /opt/Ardia/ardia.bin flags=(unconfined) {
+  userns,
+
+  include if exists <local/ardia>
+}
