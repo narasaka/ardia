@@ -3,8 +3,7 @@ import { engineAvailable, hostCall, onEngineTopic } from "../engine/host";
 import { requireNativeModule } from "../modules";
 import type { DialogsModule } from "../nativeModuleTypes";
 import { expectTrue, type Check } from "./check";
-
-type TabEvent = { key?: unknown; name?: unknown; data?: { title?: unknown; isLoading?: unknown } };
+import type { TabEvent } from "./engineHost";
 
 const LOAD_MS = 8000;
 const STALLED_MS = 3000;
