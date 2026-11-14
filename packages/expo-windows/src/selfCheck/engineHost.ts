@@ -9,7 +9,7 @@ import { comparable } from "./engineCalls";
 import { fieldFocusedIn } from "../appKeyboard";
 import { textFocusForCheck } from "../textFocus";
 
-type TabEvent = { key?: unknown; name?: unknown; data?: { title?: unknown; isLoading?: unknown } };
+export type TabEvent = { key?: unknown; name?: unknown; data?: { title?: unknown; isLoading?: unknown } };
 type ListedTab = { key: string; tab?: number; title: string; shown: boolean; windowVisible: boolean; width: number; height: number; session?: number };
 
 const PAGE_KEY = "self-check-page";
