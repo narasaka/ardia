@@ -71,7 +71,7 @@ const config = {
         Name: "Ardia",
         GenericName: "Web Browser",
         Comment: "Browse the web",
-        StartupWMClass: "Ardia",
+        StartupWMClass: "ardia",
         StartupNotify: "true",
         Icon: "ardia",
         Actions: "new-window;",

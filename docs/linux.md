@@ -121,8 +121,8 @@ setuid helper, so it is sandboxed where user namespaces work and runs with `--no
 `pnpm -C apps/browser/linux package [--arch x64|arm64|all] [--target AppImage|deb|dir|all]` stages `out/` and `ui/`
 (no source maps) with a `package.json` that has no dependencies, since the main process is one esbuild bundle, and
 electron-builder makes `dist/Ardia-<version>-<arch>.AppImage` and `.deb`. The Electron binary ships as `ardia.bin`
-behind the `ardia` launcher script; `ardia.desktop` has `StartupWMClass=Ardia`, the `http`/`https`/`text/html`
-handlers and a New Window action. The version and build number come from the Mac project (`scripts/version.mjs`), the
+behind the `ardia` launcher script; `ardia.desktop` has `StartupWMClass=ardia` (Electron names the windows' class
+after the desktop file), the `http`/`https`/`text/html` handlers and a New Window action. The version and build number come from the Mac project (`scripts/version.mjs`), the
 icons from its asset catalog, the intro music from the Windows build.
 
 ## Paths

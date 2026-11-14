@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { hostEnvironment, xdgConfigHome, xdgDataHome } from "../paths";
 
 export const DESKTOP_FILE = "ardia.desktop";
-export const WINDOW_CLASS = "Ardia";
+export const WINDOW_CLASS = "ardia";
 export const MIME_TYPES = ["text/html", "text/xml", "application/xhtml+xml", "x-scheme-handler/http", "x-scheme-handler/https"];
 
 const run = promisify(execFile);

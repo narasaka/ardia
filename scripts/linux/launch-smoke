@@ -49,6 +49,11 @@ done
 echo "launch-smoke: window \"$window\" and the smoke page ($loaded) after $(( $(date +%s) - started )) s"
 sleep 2
 "$repo/scripts/linux/capture" "$port" "$out/screenshots" || fail "no screenshot"
+if command -v xprop >/dev/null && command -v xwininfo >/dev/null; then
+  classes="$(for id in $(DISPLAY=":$display" xwininfo -root -children | grep -o '^ *0x[0-9a-f]*'); do DISPLAY=":$display" xprop -id "$id" WM_CLASS 2>/dev/null; done | grep -o '"[^"]*", "[^"]*"' | sort -u | tr '\n' ' ')"
+  echo "launch-smoke: window classes $classes"
+  [[ "$classes" == *'"ardia", "ardia"'* ]] || fail "no window has the class ardia, which ardia.desktop's StartupWMClass names"
+fi
 "$repo/scripts/linux/test-instance" "$name" --stop
 grep -q "quit quitting" "$data/launch.log" || fail "the quit handshake didn't finish"
 [[ -s "$data/session.json" ]] || fail "the session wasn't saved"
