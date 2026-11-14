@@ -573,8 +573,13 @@ Answered on Windows since the engine took Windows paths (`windows-engine-2026111
   denied schemes, with the request's user gesture). For a tab the host keeps, `ardia/win/external_apps.cc` sends the
   `externalApp` tab event (`id`, `url`, `origin` or null, `userGesture`, `offTheRecord`) to `domains/externalApps.ts`
   and keeps the asking document. The `externalAppAlive` page call answers `{ alive: true }` once per request while
-  that document lives (a request with no page origin, from the browser or an extension, only needs its tab), as the
-  Mac's `ResolveExternalApp` checks. The engine keeps a page's 8 newest asks at most, and the app tells it
+  that document lives, as the Mac's `ResolveExternalApp` checks. Every request with an initiating origin that isn't an
+  extension's counts as a page's, opaque origins included: a `data:` page or a sandboxed frame needs its document
+  alive too. Only a request with no initiating origin (the browser) or an extension's needs just its tab. The prompt
+  shows an origin only when it isn't opaque; otherwise it says "This page wants to open this application." and never
+  borrows another page's name. A cross-site navigation drops the page's prompt (`state/tabs/pageEvents.ts`
+  `leftPage`, as on the Mac); after a same-site navigation or a reload the prompt can stay, and Open then launches
+  nothing because the asking document is gone. The engine keeps a page's 8 newest asks at most, and the app tells it
   (`externalAppForget`) whenever it drops one without launching: a no, no handler, a closed page or a forgotten
   profile. `mailto` never asks: Chromium allows it by default and opens the mail app itself,
   as on the Mac.
