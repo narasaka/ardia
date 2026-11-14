@@ -43,7 +43,7 @@ jobs:
       - name: Electron
         run: |
           node node_modules/electron/install.js
-          node_modules/electron/dist/electron --version
+          node -p "require('electron/package.json').version"
       - name: Typecheck
         run: |
           pnpm -C apps/browser/linux typecheck
@@ -90,7 +90,7 @@ jobs:
       - name: Screenshots in the summary
         if: ${{ !cancelled() }}
         run: |
-          for shot in "$RUNNER_TEMP"/smoke-*/screenshots/*.png; do [ -f "$shot" ] && echo "- $(basename "$(dirname "$(dirname "$shot")")")/$(basename "$shot")" >> "$GITHUB_STEP_SUMMARY"; done
+          for shot in "$RUNNER_TEMP"/smoke-*/screenshots/*.png; do [ -f "$shot" ] && echo "- $(basename "$(dirname "$(dirname "$shot")")")/$(basename "$shot")" >> "$GITHUB_STEP_SUMMARY"; done; true
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
