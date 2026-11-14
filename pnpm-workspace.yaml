@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - apps/browser/linux
   - packages/*
   - "!apps/site"
   - "!apps/dashboard"
@@ -16,3 +17,4 @@ patchedDependencies:
 
 allowBuilds:
   esbuild: false
+  electron: true
