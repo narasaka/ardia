@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, type BrowserWindowConstructorOptions, type Rectangle } from "electron";
+import { BrowserWindow, Menu, screen, type BrowserWindowConstructorOptions, type ContextMenuParams, type MenuItemConstructorOptions, type Rectangle, type WebContents } from "electron";
 import { defineModule, emit } from "../bridge";
 import { isBackground } from "../paths";
 import { isQuitting, replyToTerminate, requestQuit } from "../quit";
@@ -104,7 +104,47 @@ function emitFrameSoon(id: string, window: BrowserWindow) {
   );
 }
 
+function editMenu(contents: WebContents, params: ContextMenuParams): MenuItemConstructorOptions[] {
+  const flags = params.editFlags;
+  const spelling: MenuItemConstructorOptions[] = params.misspelledWord
+    ? [
+        ...params.dictionarySuggestions.slice(0, 5).map((word) => ({ label: word, click: () => contents.replaceMisspelling(word) })),
+        ...(params.dictionarySuggestions.length ? [] : [{ label: "No Guesses Found", enabled: false }]),
+        { label: "Learn Spelling", click: () => contents.session.addWordToSpellCheckerDictionary(params.misspelledWord) },
+        { type: "separator" },
+      ]
+    : [];
+  if (!params.isEditable) return params.selectionText ? [{ label: "Copy", role: "copy" }] : [];
+  return [
+    ...spelling,
+    { label: "Undo", role: "undo", enabled: flags.canUndo },
+    { label: "Redo", role: "redo", enabled: flags.canRedo },
+    { type: "separator" },
+    { label: "Cut", role: "cut", enabled: flags.canCut },
+    { label: "Copy", role: "copy", enabled: flags.canCopy },
+    { label: "Paste", role: "paste", enabled: flags.canPaste },
+    { label: "Paste and Match Style", role: "pasteAndMatchStyle", enabled: flags.canPaste },
+    { label: "Delete", role: "delete", enabled: flags.canDelete },
+    { type: "separator" },
+    { label: "Select All", role: "selectAll", enabled: flags.canSelectAll },
+  ];
+}
+
+function offerEditMenu(window: BrowserWindow) {
+  window.webContents.on("context-menu", (_event, params) => {
+    const items = editMenu(window.webContents, params);
+    if (!items.length) return;
+    const menu = Menu.buildFromTemplate(items);
+    if (isBackground()) {
+      console.info(`[ardia linux] edit menu (not shown): ${menu.items.filter((item) => item.type !== "separator").map((item) => item.label).join(" | ")}`);
+      return;
+    }
+    menu.popup({ window });
+  });
+}
+
 function watch(id: string, window: BrowserWindow) {
+  offerEditMenu(window);
   if (kinds.get(id) === "browser") lastBrowser = id;
   window.on("focus", () => {
     if (kinds.get(id) === "browser") lastBrowser = id;

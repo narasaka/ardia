@@ -13,6 +13,8 @@ type MacTextInputProps = ComponentProps<typeof WebTextInput> & {
   onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
 };
 
+const SHRINKS_LIKE_NATIVE = { minWidth: 0 };
+
 const MODIFIERS = ["metaKey", "shiftKey", "altKey", "ctrlKey"] as const;
 const matches = (e: KeyboardEvent, wanted: KeyMatch) => e.key === wanted.key && MODIFIERS.every((m) => wanted[m] === undefined || !!e[m] === wanted[m]);
 
@@ -50,5 +52,5 @@ export const TextInput = forwardRef<unknown, MacTextInputProps>(function MacText
     if (field && props.onSelectionChange) props.onSelectionChange({ nativeEvent: { selection: { start: field.selectionStart ?? 0, end: field.selectionEnd ?? 0 } } } as never);
     (props.onChange as ((event: unknown) => void) | undefined)?.(e);
   };
-  return <Input {...props} ref={attach} onChange={onChange} onKeyPress={onKeyDown || keyDownEvents ? handleKeyDown : props.onKeyPress} />;
+  return <Input {...props} style={[SHRINKS_LIKE_NATIVE, props.style]} ref={attach} onChange={onChange} onKeyPress={onKeyDown || keyDownEvents ? handleKeyDown : props.onKeyPress} />;
 }) as unknown as typeof WebTextInput;
