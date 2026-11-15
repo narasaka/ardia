@@ -1,0 +1,148 @@
+# Copyright 2026 Ardia. Apache-2.0.
+
+import("//testing/test.gni")
+
+assert(is_linux)
+
+source_set("input_region") {
+  sources = [
+    "host/input_region.cc",
+    "host/input_region.h",
+  ]
+
+  deps = [
+    "//base",
+    "//ui/gfx/geometry",
+  ]
+}
+
+source_set("test_gate") {
+  sources = [
+    "test_gate.cc",
+    "test_gate.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("linux") {
+  sources = [
+    "api.cc",
+    "api.h",
+    "app_lifetime.cc",
+    "app_lifetime.h",
+    "browser_window/autofill_prompt_handler.cc",
+    "browser_window/autofill_prompts.cc",
+    "browser_window/autofill_prompts.h",
+    "browser_window/browser_window.cc",
+    "browser_window/browser_window.h",
+    "browser_window/find_bar.cc",
+    "browser_window/location_bar.cc",
+    "browser_window/web_contents_delegate.cc",
+    "browser_window/web_contents_delegate.h",
+    "content_browser_client.cc",
+    "content_browser_client.h",
+    "host/extension_views.cc",
+    "host/extension_views.h",
+    "host/host.cc",
+    "host/host.h",
+    "host/host_visibility.cc",
+    "host/key_map.cc",
+    "host/key_map.h",
+    "host/leaving_pages.cc",
+    "host/leaving_pages.h",
+    "log.cc",
+    "log.h",
+    "main.cc",
+    "main.h",
+    "main_delegate.cc",
+    "main_delegate.h",
+    "main_parts.cc",
+    "main_parts.h",
+    "probe.cc",
+    "probe.h",
+    "windows/app_window.cc",
+    "windows/app_window.h",
+    "windows/app_windows.cc",
+    "windows/app_windows.h",
+    "windows/popup_window.cc",
+    "windows/popup_window.h",
+  ]
+
+  public_deps = [
+    ":input_region",
+    ":test_gate",
+    "//ardia/core:hooks",
+    "//ardia/core:host_visibility",
+    "//ardia/linux/ui_host",
+    "//ardia/linux/ui_host:modules",
+    "//ardia/win:shared",
+  ]
+
+  deps = [
+    "//ardia/linux/modules",
+    "//ardia/linux/prompts",
+    "//ardia/linux/renderer",
+    "//base",
+    "//cc/animation",
+    "//chrome/app:command_ids",
+    "//chrome/browser",
+    "//chrome/browser/ardia",
+    "//chrome/browser/devtools",
+    "//chrome/browser/profiles:profile",
+    "//chrome/common",
+    "//chrome/common:buildflags",
+    "//components/input",
+    "//components/keep_alive_registry",
+    "//components/security_state/content",
+    "//components/security_state/core",
+    "//components/tabs:public",
+    "//components/version_info",
+    "//components/vector_icons",
+    "//components/viz/common",
+    "//components/web_modal",
+    "//content/public/app",
+    "//content/public/browser",
+    "//content/public/common",
+    "//media",
+    "//net",
+    "//sandbox/policy",
+    "//services/cert_verifier/public/mojom",
+    "//services/network/public/mojom",
+    "//skia",
+    "//third_party/blink/public/common",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/color",
+    "//ui/compositor",
+    "//ui/display",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gfx/animation/keyframe",
+    "//ui/gfx/codec",
+    "//ui/native_theme",
+    "//ui/snapshot",
+    "//ui/views",
+    "//ui/views/controls/webview",
+    "//url",
+  ]
+
+}
+
+
+test("ardia_linux_unittests") {
+  sources = [
+    "host/input_region_unittest.cc",
+    "test_gate_unittest.cc",
+  ]
+  deps = [
+    ":input_region",
+    ":test_gate",
+    "//ardia/linux/ui_host:unit_tests",
+    "//base",
+    "//base/test:run_all_unittests",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//ui/gfx/geometry",
+  ]
+}

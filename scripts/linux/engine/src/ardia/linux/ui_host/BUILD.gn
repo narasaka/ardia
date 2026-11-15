@@ -1,0 +1,77 @@
+assert(is_linux)
+
+source_set("modules") {
+  sources = [
+    "modules.cc",
+    "modules.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("served_files") {
+  sources = [
+    "served_files.cc",
+    "served_files.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("ui_host") {
+  sources = [
+    "app_bridge_host.cc",
+    "app_bridge_host.h",
+    "ardia_app_source.cc",
+    "ardia_app_source.h",
+    "ardia_app_ui.cc",
+    "ardia_app_ui.h",
+    "linux_engine_module.cc",
+    "linux_engine_module.h",
+    "ui_host.cc",
+    "ui_host_parts.h",
+    "ui_navigation_throttle.cc",
+    "ui_navigation_throttle.h",
+  ]
+
+  public_deps = [
+    ":modules",
+    ":served_files",
+    "//ardia/linux/ui_host/mojom",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser",
+    "//chrome/browser/profiles:profile",
+    "//chrome/common",
+    "//components/component_updater",
+    "//components/prefs",
+    "//components/update_client",
+    "//content/public/browser",
+    "//content/public/common",
+    "//mojo/public/cpp/bindings",
+    "//services/network/public/mojom",
+    "//third_party/blink/public/common",
+    "//third_party/re2",
+    "//ui/base",
+    "//url",
+  ]
+}
+
+source_set("unit_tests") {
+  testonly = true
+  sources = [
+    "ardia_app_source_unittest.cc",
+    "modules_unittest.cc",
+    "ui_navigation_throttle_unittest.cc",
+  ]
+
+  deps = [
+    ":ui_host",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//url",
+  ]
+}

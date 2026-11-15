@@ -1,0 +1,6 @@
+{
+  "repository": "narasaka/ardia",
+  "release": "linux-engine-20261115-2",
+  "chromium": "157.0.8103.50",
+  "x64": { "asset": "ardia-chromium-linux-x64.tar.xz", "sha256": "bc1f31c7e90b7251ad81f7380d72c7566de205014472870460609fec87325a32" }
+}

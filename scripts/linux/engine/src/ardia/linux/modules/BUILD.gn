@@ -1,0 +1,165 @@
+# Copyright 2026 Ardia. Apache-2.0.
+
+import("//testing/test.gni")
+
+assert(is_linux)
+
+source_set("logic") {
+  sources = [
+    "desktop_entry.cc",
+    "desktop_entry.h",
+    "document_store.cc",
+    "document_store.h",
+    "electron_secrets.cc",
+    "electron_secrets.h",
+    "file_drop_rules.cc",
+    "file_drop_rules.h",
+    "keychain_records.cc",
+    "keychain_records.h",
+    "launch_arguments.cc",
+    "launch_arguments.h",
+    "launch_config.cc",
+    "launch_config.h",
+    "owner_check_core.cc",
+    "owner_check_core.h",
+    "telemetry_files.cc",
+    "telemetry_files.h",
+  ]
+
+  deps = [
+    "//ardia/core:hooks",
+    "//base",
+    "//crypto",
+    "//net",
+    "//third_party/boringssl",
+    "//third_party/re2",
+    "//url",
+  ]
+}
+
+source_set("modules") {
+  sources = [
+    "app.cc",
+    "app_modules.cc",
+    "app_modules.h",
+    "args.h",
+    "config.cc",
+    "desktop_modules.cc",
+    "dev.cc",
+    "dialogs.cc",
+    "documents.cc",
+    "edge_pointer.cc",
+    "edge_pointer.h",
+    "electron_keyring.cc",
+    "electron_keyring.h",
+    "file_drop.cc",
+    "file_drop.h",
+    "focus.cc",
+    "focus_return.cc",
+    "focus_return.h",
+    "keychain.cc",
+    "launch_links.cc",
+    "location.cc",
+    "location.h",
+    "menus.cc",
+    "notifications.cc",
+    "owner_check.cc",
+    "owner_check.h",
+    "owner_prompt.cc",
+    "owner_prompt.h",
+    "owner_window.cc",
+    "owner_window.h",
+    "recording.cc",
+    "recording.h",
+    "report.cc",
+    "report.h",
+    "screen_lock.cc",
+    "screen_lock.h",
+    "shell.cc",
+    "system.cc",
+    "telemetry_local.cc",
+    "//ardia/linux/import/import_module.cc",
+    "//ardia/linux/import/import_module.h",
+    "//ardia/linux/sync/sync_module.cc",
+    "//ardia/linux/sync/sync_module.h",
+    "//ardia/linux/translate/translate_module.cc",
+    "//ardia/linux/translate/translate_module.h",
+    "test_answers.cc",
+    "test_answers.h",
+  ]
+
+  public_deps = [
+    ":logic",
+    "//ardia/linux/ui_host:modules",
+  ]
+
+  deps = [
+    "//ardia/linux/dbus",
+    "//ardia/linux/import:core",
+    "//ardia/linux/sync:core",
+    "//ardia/linux/ui_host:served_files",
+    "//ardia/linux/translate:core",
+    "//base",
+    "//chrome/app/theme:chrome_unscaled_resources",
+    "//chrome/browser",
+    "//chrome/browser/ardia",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/themes",
+    "//chrome/common",
+    "//components/constrained_window",
+    "//cc/paint",
+    "//components/dbus",
+    "//components/input",
+    "//components/os_crypt/async/browser",
+    "//components/os_crypt/async/common",
+    "//components/version_info",
+    "//content/public/browser",
+    "//crypto",
+    "//dbus",
+    "//third_party/blink/public/common",
+    "//gpu/config",
+    "//net",
+    "//services/device/public/cpp/geolocation",
+    "//services/device/public/mojom",
+    "//services/network/public/cpp",
+    "//skia",
+    "//third_party/re2",
+    "//third_party/zlib/google:compression_utils",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/base/idle",
+    "//ui/compositor",
+    "//ui/display",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gfx/x",
+    "//ui/menus",
+    "//ui/ozone",
+    "//ui/native_theme",
+    "//ui/shell_dialogs",
+    "//ui/views",
+    "//url",
+  ]
+}
+
+test("ardia_linux_modules_unittests") {
+  sources = [
+    "desktop_entry_unittest.cc",
+    "document_store_unittest.cc",
+    "electron_secrets_unittest.cc",
+    "file_drop_rules_unittest.cc",
+    "keychain_records_unittest.cc",
+    "launch_arguments_unittest.cc",
+    "launch_config_unittest.cc",
+    "owner_check_core_unittest.cc",
+    "telemetry_files_unittest.cc",
+  ]
+
+  deps = [
+    ":logic",
+    "//base",
+    "//base/test:run_all_unittests",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}
