@@ -63,6 +63,9 @@ export class FakeWebContents extends EventEmitter {
 
 export class BrowserWindow extends EventEmitter {
   static readonly made: BrowserWindow[] = [];
+  static getFocusedWindow(): BrowserWindow | null {
+    return null;
+  }
   readonly webContents = new FakeWebContents();
   readonly options: unknown;
   constructor(options: unknown = {}) {
@@ -77,8 +80,14 @@ export const ipcRenderer = new EventEmitter();
 export const session = { defaultSession: { name: "default" } };
 
 const inert = (): unknown => new Proxy(() => undefined, { get: (_target, key) => (key === "then" ? undefined : inert()), apply: () => undefined });
-export const dialog = inert();
-export const net = inert();
+const scriptable = <Methods extends object>(methods: Methods): Methods =>
+  new Proxy(methods, { get: (target, key) => (key in target ? target[key as keyof Methods] : key === "then" ? undefined : inert()) });
+export const dialog = scriptable({
+  showSaveDialog: async (..._args: unknown[]): Promise<{ canceled: boolean; filePath?: string }> => ({ canceled: true }),
+});
+export const net = scriptable({
+  fetch: async (..._args: unknown[]): Promise<Response> => new Response(null, { status: 503 }),
+});
 export const Menu = inert();
 export const MenuItem = inert();
 export const nativeImage = inert();

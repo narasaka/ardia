@@ -112,14 +112,14 @@ function SyncOff({ info }: { info: FolderInfo | null }) {
             </>
           )}
         </Row>
-        <Row anchor="sync.folder" description={info ? folderLabel(info) : " "}>
+        <Row anchor="sync.folder" description={info ? (info.path ? folderLabel(info) : "No folder chosen") : " "}>
           <Button title="Choose…" onPress={() => void chooseSyncFolder()} />
         </Row>
         {noICloud ? (
           <Row
             icon={<Symbol name="exclamationmark.icloud" size={14} color={theme.warning} style={{ width: 28, height: 20 }} />}
-            title={`${PLATFORM_TERMS.cloudDrive} is off on this ${PLATFORM_TERMS.computer}`}
-            description={`${PLATFORM_TERMS.turnOnCloudDrive}, or choose another folder that syncs between your ${PLATFORM_TERMS.syncedComputer}s, like one in Dropbox, on a NAS or on a USB drive.`}
+            title={PLATFORM_TERMS.noCloudDrive?.title ?? `${PLATFORM_TERMS.cloudDrive} is off on this ${PLATFORM_TERMS.computer}`}
+            description={PLATFORM_TERMS.noCloudDrive?.description ?? `${PLATFORM_TERMS.turnOnCloudDrive}, or choose another folder that syncs between your ${PLATFORM_TERMS.syncedComputer}s, like one in Dropbox, on a NAS or on a USB drive.`}
           >
             {PLATFORM_TERMS.cloudDriveSettingsUrl ? <Button title="Open iCloud Settings" onPress={() => void Linking.openURL(PLATFORM_TERMS.cloudDriveSettingsUrl)} /> : null}
           </Row>

@@ -1,8 +1,10 @@
 import react from "@vitejs/plugin-react";
 import { createRequire } from "node:module";
+import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { LINUX_UI_FONT_STACK, REACT_NATIVE_WEB_SYSTEM_STACK } from "../../../../packages/expo-linux/src/host/uiFont";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const repo = here("../../../../");
@@ -31,12 +33,56 @@ function commonJsRequires(): Plugin {
   };
 }
 
+type SourcePatch = { module: RegExp; from: string; to: string };
+
+const reactNativeWebModule = (path: string) => new RegExp(`react-native-web/dist/(cjs/)?${path.replace(/[./]/g, (c) => `\\${c}`)}$`);
+
+const REACT_NATIVE_WEB_PATCHES: SourcePatch[] = [
+  {
+    module: reactNativeWebModule("exports/StyleSheet/compiler/createReactDOMStyle.js"),
+    from: `'${REACT_NATIVE_WEB_SYSTEM_STACK}'`,
+    to: JSON.stringify(LINUX_UI_FONT_STACK),
+  },
+  {
+    module: reactNativeWebModule("exports/UIManager/index.js"),
+    from: "var height = node.offsetHeight;\n  var width = node.offsetWidth;",
+    to: "var box = node.getBoundingClientRect();\n  var height = Math.abs(box.height - node.offsetHeight) < 1 ? box.height : node.offsetHeight;\n  var width = Math.abs(box.width - node.offsetWidth) < 1 ? box.width : node.offsetWidth;",
+  },
+];
+
+function patchReactNativeWeb(code: string, id: string): string | null {
+  const patch = REACT_NATIVE_WEB_PATCHES.find((each) => each.module.test(id));
+  if (!patch) return null;
+  if (!code.includes(patch.from)) throw new Error(`ardia-linux: react-native-web changed; ${id} no longer contains the source this build patches`);
+  return code.replace(patch.from, patch.to);
+}
+
+function reactNativeWebPatches(): Plugin {
+  return {
+    name: "ardia-linux:react-native-web-patches",
+    transform(code, id) {
+      const patched = patchReactNativeWeb(code, id);
+      return patched === null ? null : { code: patched, map: null };
+    },
+  };
+}
+
+const prebundledReactNativeWebPatches = {
+  name: "ardia-linux:react-native-web-patches",
+  setup(build: { onLoad(options: { filter: RegExp }, callback: (args: { path: string }) => Promise<{ contents: string; loader: "js" } | undefined>): void }) {
+    build.onLoad({ filter: /react-native-web\/dist\/.*\.js$/ }, async ({ path }) => {
+      const patched = patchReactNativeWeb(await readFile(path, "utf8"), path);
+      return patched === null ? undefined : { contents: patched, loader: "js" };
+    });
+  },
+};
+
 const dev = process.env.ARDIA_LINUX_DEV === "1";
 
 export default defineConfig({
   root: here("."),
   base: "./",
-  plugins: [commonJsRequires(), react()],
+  plugins: [commonJsRequires(), reactNativeWebPatches(), react()],
   define: {
     __DEV__: JSON.stringify(dev),
     global: "globalThis",
@@ -53,7 +99,7 @@ export default defineConfig({
       { find: /^expo$/, replacement: `${expoLinux}expo.ts` },
     ],
   },
-  optimizeDeps: { include: ["react-native-web", "zustand", "zustand/react/shallow", "react-dom/client"] },
+  optimizeDeps: { include: ["react-native-web", "zustand", "zustand/react/shallow", "react-dom/client"], esbuildOptions: { plugins: [prebundledReactNativeWebPatches] } },
   server: { host: "127.0.0.1", port: Number(process.env.ARDIA_VITE_PORT ?? 5281), strictPort: false, fs: { allow: [repo] } },
   build: { outDir: process.env.ARDIA_UI_OUT || here("../ui"), emptyOutDir: true, target: "chrome140", sourcemap: true, chunkSizeWarningLimit: 20000, minify: !dev },
 });

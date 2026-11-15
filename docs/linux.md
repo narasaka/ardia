@@ -13,21 +13,21 @@ Walked by hand on 2026-11-14 on Ubuntu 24.04 (x86_64), in a test instance on a p
 data folder, as a user would: real X key presses, clicks and drags, a screenshot for every row. The walk started on
 commit d7a4bd789; the rows it found broken were fixed on the way and seen again after the fix (through cc0829af3),
 and those rows name the fix. Most rows were walked with no window manager; maximize, dragging, full screen, focus, menus and Peek were walked
-again under xfwm4 with its compositor. Of the 63 rows, 46 work, 6 work with a difference, 1 is broken, 1 is not
-offered and 9 were not walked. Works with a difference says what differs; the Mac's list is
+again under xfwm4 with its compositor. Of the 64 rows, 62 work, 2 work with a difference, none is broken or missing,
+and every row was walked. Works with a difference says what differs; the Mac's list is
 `docs/dia-feature-parity.md`.
 
 **Install, first launch, updates**
 
 | Feature | State | Fixed in |
 | --- | --- | --- |
-| AppImage and .deb | Not walked: the walk ran the checkout's build; CI's smoke runs the extracted AppImage | |
+| AppImage and .deb | Works: built with `pnpm -C apps/browser/linux package` and run from the extracted AppImage and the .deb's extracted `/opt/Ardia` (unsandboxed here: AppArmor blocks user namespaces and nothing was installed setuid): first launch (onboarding), a link from a second launch (opens in Little Ardia), Ctrl+Q, and a relaunch that restored the tabs (the .deb also resumed onboarding at the step it was left on) | |
 | First launch | Works: onboarding, no release notes | |
-| First launch with a link | Not walked | |
+| First launch with a link | Works: onboarding starts and the link opens in Little Ardia in front of it; closing Little Ardia leaves onboarding | |
 | Onboarding (source, look, last choices) | Works: six steps for Coming from Chrome (colour, frame, sharing, layout, default browser and login, welcome) | |
-| Intro animation and music | Differs: step 1 shows the app icon where the Mac plays the meadow; music not checked (no audio device) | |
+| Intro animation and music | Works: the Mac's meadow scene plays behind the icon and wordmark, fading in over the dawn poster on its first frame (seen with SwiftShader WebGL; with no WebGL2 the poster stays), and the intro music plays (the audio element runs; no audio device to hear it). Before, a still poster | 82038c1c6 |
 | Tour | Works: three stops for tabs across the top (search, two pages side by side, all set), Back, Next, Skip Tour, Done | |
-| Import from another browser | Not walked: no other browser's data on this machine | |
+| Import from another browser | Works with a Chromium profile made for the walk (this machine's browsers hold no data): Import from Another Browser finds Chromium, imports 2 bookmarks (into "Imported from Chromium") and 2 history items. Passwords from a keyring weren't tried | |
 | Check for updates | Works: "Ardia is up to date" with the version and the releases page, with the info icon | a03d8dd4a |
 | Default browser | Works: the pane then says Ardia is the default. A test instance (its own `ARDIA_DATA_DIR`) used to make the checkout's Electron the real desktop's default browser; it now writes `ardia.desktop`, `mimeapps.list` and icons under `<data>/Desktop` and runs no xdg tool | a3a39e114 |
 | Open at login | Works: the autostart entry is written (under `<data>/Desktop` in a test instance) | a3a39e114 |
@@ -38,7 +38,7 @@ offered and 9 were not walked. Works with a difference says what differs; the Ma
 | --- | --- | --- |
 | New tab, close, reopen closed tab (Ctrl+Shift+T) | Works | |
 | New window | Works | |
-| Private window | Works; closing one with two tabs asks (Close 2 tabs?, Don't ask me again). The toolbar's private label is cut to "Incogn…" | |
+| Private window | Works; closing one with two tabs asks (Close 2 tabs?, Don't ask me again). The private label reads "Incognito" in full; it was cut to "Incogn…" (and a profile named Team to "Tea…") because React Native Web measured labels in whole pixels | 5a369244a |
 | Quit and relaunch with the session restored | Works: Ctrl+Q quits at once (no confirm by default); both windows, the split, the tabs and the sidebar layout came back | |
 | Little Ardia (Ctrl+Alt+N) | Works: recent pages, a page loads in it, Ctrl+W closes it. With no compositor its rounded corners are black | |
 | Search Tabs (Ctrl+Shift+A), Ctrl+Tab | Works: the switcher shows page pictures | |
@@ -47,13 +47,14 @@ offered and 9 were not walked. Works with a difference says what differs; the Ma
 | Peek | Works: Alt-click (the Chrome preset's Peek key; Shift-click opens a window there) opens it, also under xfwm4; Escape closes it and puts focus back on the link. Escape did nothing before | 37dde4bf7 |
 | Pop-up windows from pages | Works: Ardia's pop-up window with the origin strip and Open as Tab; Ctrl+W closes it | |
 | Pop-up blocking | Works: `window.open`, a `target=_blank` link and a form opened without a click are all blocked with the prompt; with a click they open. The prompt keeps the old entries after a reload | |
-| Closing a window with unsaved work in a page | Broken: the window closes without asking (Leave site? appears only on navigation and quit) | |
+| Closing a window with unsaved work in a page | Works: its close button, Ctrl+Shift+W and the last window ask once for the window ("Leave 127.0.0.1:8714?", Close Window, Cancel); Cancel keeps it, a window with nothing unsaved closes at once, and closing the last window then quits without asking again. Before, it closed without asking | ceec94d4d |
 | Main, Settings and Little Ardia window chrome | Works, app-drawn buttons, no system title bar | |
 | Maximize and restore | Works under xfwm4, square corners while maximized | |
-| Moving a window, edge snapping | Differs: dragging the tab strip moves the window (also with no window manager), but since Ardia moves it rather than the window manager, it doesn't snap to screen edges; a double click on the tab strip's empty space didn't maximize | |
-| Pop-up menus (the … menu, tab menus) | Works, also when no Ardia window has focus (no window manager, right after a dialog); before, the menu didn't open and its button stayed pressed. Shortcut labels read "Ctrl+Comma" | ab87cf84a |
-| Pin, Top Apps, groups | Not walked | |
-| Profiles: create, switch with Alt+1, Alt+2 | Not walked | |
+| Moving a window, edge snapping | Works under xfwm4: the window manager moves it from the tab strip, toolbar, sidebar header, frame margins and Settings' title bar, so it snaps to screen edges, a double click maximizes and restores, dragging a maximized window restores it, and Alt-drag works; right-clicking the empty tab strip or sidebar header still opens their menus. xfwm4 here doesn't tile on drag, a decorated window included. The empty sidebar below the tabs and Little Ardia's title still move the window themselves (they take double clicks and clicks). With no window manager, drag areas don't move the window | 72fcd4f2c |
+| Pop-up menus (the … menu, tab menus) | Works, also when no Ardia window has focus (no window manager, right after a dialog); before, the menu didn't open and its button stayed pressed; with no window manager they also open after another Ardia window or a file dialog closed, which used to leave every menu, the page's too, closing as it opened. Shortcut labels read "Ctrl+Comma" | ab87cf84a, becfcb2c6 |
+| Keyboard focus after a dialog or window closes | Works like the Mac: after a page's alert, an Ardia confirm, a save or open picker, a page's file input or a focused Ardia window (Settings) closes, the window behind takes the keyboard again and its text field keeps typing, with no window manager and under xfwm4, wherever the pointer is. Before, with no window manager, focus fell to the desktop and keys reached Ardia only while the pointer was over it. It never takes focus from another app: under xfwm4, an app switched to right as a dialog closed stays active; before, Ardia raised itself back over it | 016992209, 47a2c3291 |
+| Pin, Top Apps, groups | Works: the hover card's Pin makes a Top App tile; the tab menu's New Group with Tab makes a group and names it in place | |
+| Profiles: create, switch with Alt+1, Alt+2 | Works: Settings › Profiles › Create Profile, then Alt+2 and Alt+1 switch (the window takes the profile's colour). The sidebar header cuts "Work" to "W..." | |
 
 **Pages**
 
@@ -65,19 +66,19 @@ offered and 9 were not walked. Works with a difference says what differs; the Ma
 | Zoom (Ctrl+=, Ctrl+0) | Works, with the zoom popover and the icon in the address bar | |
 | Print | Works: with a printer, the system print dialog; with none (CUPS has no destinations), Save as PDF into the downloads folder. Before, Ctrl+P froze the tab: Electron refuses to print without a printer and leaves the page waiting | 3b537855b |
 | JavaScript alert, confirm and prompt | Works: GTK boxes for alert and confirm, the app's prompt for prompt | |
-| Page, link and image menus | Differs: native menus with fewer items than the Mac's (link: Open in New Tab, Open in New Window, Copy Link Address, Inspect; page: Back, Forward, Reload, Save Page As, Print, Inspect) | |
+| Page, link and image menus | Works: the Mac's items in its order (Chrome's menu as Ardia arranges it). Page: Back, Forward, Reload, Save As, Print, View Page Source, Inspect. Link: Open Link in New Tab, New Window, Incognito Window, Split View, Save Link As, Copy Link Address, Copy Link Text. Image: Open Image in New Tab, Save Image As, Copy Image, Copy Image Address. Video: Loop, Show Controls, Picture in Picture, then open, save, copy. Selection: Copy, Copy Link to Highlight, Search Google for "…", Print. A misspelled word: suggestions, Add to Dictionary, then the edit items. Split View, Incognito, Picture in Picture, a suggestion, the highlight link and View Page Source were each used. No Share items (no share sheet on Linux) and no Look Up (no system dictionary). Before, a link had four items and the page six | f38e21377 |
 | Full screen (a page element) | Works; Escape leaves it | |
-| Picture in Picture | Differs: Chromium's PiP window | |
+| Picture in Picture | Differs: leaving a tab that plays audible video pops it out, coming back closes it, Back to Tab selects the tab with the video still playing, the close button pauses it, and the sidebar player follows; the menu's Picture in Picture works. The window is Chromium's own (always on top, ±10 s buttons, bottom right): Electron gives no handle on it, so the Mac's restyling, edge stash, throw to a corner, remembered frame, Keep on Top toggle and click-to-skip can't be done. Before, leaving the tab did nothing and Back to Tab only put the video back in the page | 373b0ae01 |
 | Downloads (download, panel, Ctrl+J) | Works: the panel opens for a new download and lists it | |
 | History (Ctrl+H), Clear Browsing Data (Ctrl+Shift+Del) | Works | |
 | Bookmarks (Ctrl+D, Ctrl+Shift+O) | Works | |
-| mailto and other app links | Differs: the request reaches the app's prompt, but with no app registered for the scheme (this machine has no mail app) nothing opens and nothing says so, as in Chrome | |
+| mailto and other app links | Works like the Mac: a scheme with an app gets the app's prompt in the Mac's words (Open “Magnet Test”?, the site wants to open this application; Always Allow only for https or loopback sites); a scheme no app opens (mailto here, with no mail app) does nothing and says nothing, which the Mac also does since 3bb5452d9 (Chrome does the same). Before, the prompt's wording differed and offered Always Allow to any site | 2e590a97f |
 | Network error page | Works: "This site can't be reached" with the reason, the error code and Reload; the toolbar stops loading. Before, the tab was blank and kept loading | d082f20cf |
 | DevTools (F12) | Works (a detached window) | |
 | Task Manager (Shift+Esc) | Works: every process with memory, CPU and process ID, and End Process for a page's, which then offers Reload. Before, it did nothing | eff01f92a |
 | Drop a link or file onto a page | Works: a link or file dropped on a page opens it in a new tab next to it; a page that takes drops gets them. Before, a link dropped on a page did nothing | e07e27d8a |
-| Drop a link onto the tab strip or sidebar | Not walked again after linux-crash's 4d95f7eff (before it, nothing happened) | |
-| Translate | Not offered | |
+| Drop a link onto the tab strip or sidebar | Works: a link dragged from another app onto the sidebar opens as a new tab | |
+| Translate | Works on device, like the Mac: a French or German page shows the Translate button in the address bar; the first use downloads that language from Mozilla ("Downloading French… 45% of 26 MB"), then the page turns to English in place with links and bold kept, code and form fields left alone, and text further down translated as it scrolls in. Show Original restores it; the button's menu has Choose Another Language (German to French goes through English) and Never Translate This Site. The engine is Firefox's (Bergamot with Mozilla's released models), not Apple's, so wording differs from the Mac. A page can't overload it: oversized or excess text is refused, a stuck engine is restarted, and leaving the page stops its work; a corrupt language download fails cleanly and is fetched again, and cached languages are checked against Mozilla's hashes. Before, Translate wasn't offered | eab797e77, 24e517463, 2499f3595, 3520e886d |
 
 **Passwords, permissions, extensions**
 
@@ -85,14 +86,14 @@ offered and 9 were not walked. Works with a difference says what differs; the Ma
 | --- | --- | --- |
 | Offer to save a password | Works: the app's Save password prompt (Never on This Site, Not Now, Save) | |
 | Fill a saved password | Works: the form fills when the page loads | |
-| Passwords pane: Unlock | Differs: it unlocks without asking for anything, though the pane says it asks for your login password | |
+| Passwords pane: Unlock | Works: Unlock asks for the login password in a small window over Settings ("Ardia wants to show your saved passwords."), checked with PAM's `unix_chkpwd`; a wrong password says so, the next tries wait 2 s, 5 s, 30 s, then 60 s ("Try again in N s", kept when the prompt is closed and reopened), a helper that crashes or hangs says "Ardia couldn't check the password", and Cancel keeps the pane locked. With no trusted `unix_chkpwd` it stays locked and says "Ardia can't check your login password on this system". Walked with a stub helper (`ARDIA_TEST=passwordHelper`) and, for a wrong password, the system's. Showing or saving the sync recovery phrase asks the same way. Locking the session (logind or the desktop's screen saver on D-Bus) drops the grant, closes an open prompt and sends the app its lock events: node tests with a fake logind and screen savers on private buses, and a running instance logged the screen saver's lock (the pane relocking on that event wasn't walked again). Before, it unlocked without asking; then a missing helper or `ARDIA_BACKGROUND=1` let it through and wrong tries were unlimited; then a screen lock went unnoticed on Linux, a check that finished after a lock still granted, a group-writable helper was trusted when the group was root's, and an `ARDIA_DATA_DIR` in the live `$XDG_DATA_HOME/ardia` passed as a test instance | 2d37b85cd, 6b44832b0, 4fc0cd666, 2ccbf9633, a979208e1, 99ca89c17, c31f321fa, 1dce3f54a, 49ec7a5b7, 184b12b46 |
 | Notification prompt and notifications | Works: the app's prompt; the notification shows | |
 | Location prompt | Works: the app's prompt; with no GeoClue the page gets "position unavailable". Before, allowing showed the Mac's "open System Settings" dialog | a413faa20 |
 | Camera and microphone | Works with Chromium's fake camera: the app's prompt, then the stream | |
 | Chrome Web Store install | Works: Add to Chrome, the app's Add dialog listing the permissions, then the store says Remove from Chrome | |
 | Extensions pane | Works | |
-| Ad, tracker and cookie-banner blocking | Not walked | |
-| Bookmark and password export | Not walked | |
+| Ad, tracker and cookie-banner blocking | Works: an ad script and an analytics script are blocked while a CDN script loads; EasyList's `#carbonads` is hidden on a named host and on a public IP address. Not on localhost, 127.0.0.1 or LAN addresses (10.0.0.x, 192.168.x): EasyList itself turns generic hiding off there (`@@://127.0.0.1$generichide` and its neighbours), as in every browser using it. Cookie-banner lists weren't turned on | |
+| Bookmark and password export | Works: Bookmarks › Export Bookmarks writes a Netscape bookmarks file; Settings › Passwords › Export CSV (an advanced row) asks for the login password first (a check from the last 60 s counts), then writes the CSV with mode 0600; after the save dialog it checks again, so a lock while the dialog is open cancels and a dialog left open past the 60 s asks again. The Passwords pane's "Password manager apps" row talks about the macOS Applications folder. Before, Export CSV worked while the pane was locked | 99ca89c17, 49ec7a5b7 |
 
 **Settings**
 
@@ -102,7 +103,7 @@ offered and 9 were not walked. Works with a difference says what differs; the Ma
 | Appearance: light and dark | Works | |
 | Keyboard Shortcuts pane | Works, Ctrl keys | |
 | Live Folders pane | Works (renders; no service connected) | |
-| Sync | Not walked here (see Sync below) | |
+| Sync | Works: with a folder chosen (Settings › Sync › Sync folder, in plain view since Linux has no default cloud folder), Turn On Sync writes the vault and shows Save Your Recovery Kit. Before a folder is chosen the folder row says "No folder chosen", the pane says "No synced folder found on this computer" and to choose one a sync app keeps the same across computers, and Turn On Sync is disabled, as on the Mac with iCloud Drive off; any folder chosen, `~/Ardia Sync` included, enables it. Before, the picker was an advanced row, the pane said "cloud folder is off", and it showed `~/Ardia Sync` as the folder while Turn On Sync stayed disabled, even after choosing that folder | babe9426d, 9859cf55e |
 | Report a Problem: screen recording | Works: the recording pill (Recording 0:05, Stop) floats over the window; Stop, Escape or the 60 s limit end it; with Include web pages off every page area is black, thumbnail included. Before, Record said Ardia couldn't record the window | cc0829af3 |
 
 ## Design
@@ -149,14 +150,23 @@ focused window, `ResizeObserver` and `IntersectionObserver` observe each element
 Native views are drawn in the DOM (`packages/expo-linux/src/views/registry.tsx`, most ported from the web demo):
 `Symbol`, `Surface`, `VisualEffect` (nearly opaque: a transparent Linux window can't blur the desktop), glass, popover
 bubbles, `FadeLabel`, the spinner, the pager's `SwipeArea`, the GL backdrop and power-up (with CSS fallbacks where WebGL2
-is blocklisted), and `WindowDragRegion`, which moves the window from main by following the cursor (so it also works
-without a window manager); a double-click maximizes. A dragged tab's floating preview (`windows/dragPreview.ts`) is an
+is blocklisted), the intro's meadow (`views/meadow.tsx`: the Mac's `ios/Meadow/index.html` in a sandboxed `srcdoc` iframe
+whose bridge stands in for `webkit.messageHandlers.meadow`, over Windows' dawn poster), and `WindowDragRegion`. A drag region is `-webkit-app-region: drag`, so a press there starts the window
+manager's move and a double click its maximize; presses there never reach the page, so main forwards
+`system-context-menu` as a `contextmenu` at that point. Chromium applies regions in tree order and `app-region` inherits,
+so `windows/dragCover.ts` marks what lies over a region `no-drag`: controls, views with `mouseDownCanMoveWindow={false}`,
+vertical scrollers and anything with a pointer cursor; within a bar (at most 64 px tall) other layers let the drag
+through, like the Mac's title bar, and over a larger background region anything drawn on top blocks it.
+`ELECTRON_DEBUG_DRAGGABLE_REGIONS=1` paints the computed region over each window. Regions that take clicks or double
+clicks (`clickable`, `onRegionDoubleClick`) move the window from main by following the cursor instead. A dragged tab's floating preview (`windows/dragPreview.ts`) is an
 auxiliary window main moves; dropped into a new window it settles like the Mac's: the source window's snapshot with the
 tab's page drawn in grows to the new window in 200 ms (cubic ease-out), waits for it to show, and fades in 100 ms; any
 other drop fades it in place. Its frames run on the host's timers, since a hidden window's get 1 s ones. The engine's views (`ArdiaWebView`) come from
 `engine/modules`' `engineViews`. A text field taking or losing focus is reported to main
 (`ArdiaFocus.setTextInputFocused`) for the shortcut table; `claimFocus` and the key-responder calls take DOM nodes and
-stay in the renderer. Linux uses the Windows chrome (app-drawn window buttons), keys and copy wording through
+stay in the renderer. All UI text uses one font stack (`host/uiFont.ts`: SF Pro or Inter where installed, else the
+desktop's `system-ui`); the Vite build swaps React Native Web's `System` stack, which would land on a Helvetica clone, for
+it. Linux uses the Windows chrome (app-drawn window buttons), keys and copy wording through
 `*.linux.ts` files that re-export the Windows ones, and its own `platformFeatures.linux.ts` and `platformTerms.linux.ts`.
 
 ### Pages are `<webview>` elements
@@ -226,10 +236,13 @@ its window's input router). The host's and every window's preload (`engine/hostP
   it navigates, reloads or goes back (`leavingPages.ts`; Electron needs that answer synchronously, so the dialog is
   modal). A quit the user asks for (Ctrl+Q, the app menu) first runs each page's `beforeunload`
   in the page (only pages the user has interacted with, as Chrome requires) and asks "Quit Ardia?" once for all of
-  them (`guardQuitWith` in `quit.ts`); signals quit without asking. Closing a tab doesn't ask, like the Mac, which
+  them (`guardQuitWith` in `quit.ts`); signals quit without asking. Closing a window asks the same way, once for the
+  pages that close with it (`mayCloseWindow`, called from the shared close path through `platform/windowPages`, after
+  the Close N tabs? confirm). Closing a tab doesn't ask, like the Mac, which
   runs the page's unload handlers without a prompt. Downloads (`downloads.ts`) report to the downloads panel; a test instance saves
   into its data dir. Permission prompts (`permissions.ts`) read and remember through `services/sites.ts`; external
-  protocols ask through the page's `externalApp` prompt. The page context menu is a native menu.
+  protocols ask through the page's `externalApp` prompt. The page context menu (`contextMenu.ts`) is a native menu
+  with the Mac's items in its order: Chrome's menu as `ac_context_menu.mm` arranges it, less Share and Look Up.
 - **Widevine.** The `electron` package is castlabs' Electron for Content Security (`github:castlabs/electron-releases`,
   the `+wvcus` build nearest our Electron), a drop-in Electron with Widevine. `engine/widevine.ts` calls
   `components.whenReady()` at startup, which installs or updates the CDM under `<data>/Engine/WidevineCdm` (about a
@@ -250,7 +263,10 @@ its window's input router). The host's and every window's preload (`engine/hostP
 - **Picture in Picture.** `requestPictureInPicture` runs in the page with a user gesture (`pictureInPicture.ts`): the
   playing video, else the largest one, in the main frame and then each subframe, into Chromium's PiP window. The page
   preload reports `enterpictureinpicture`/`leavepictureinpicture` as `pictureInPicture` events, so the app's PiP state
-  and the tab's badge follow, whoever started it.
+  and the tab's badge follow, whoever started it. A tab hidden while the UI's `autoPictureInPicture` holds (the setting,
+  and the tab audible or capturing) puts its playing video in PiP, and showing the tab closes a window opened that way.
+  Chromium's window tells Electron nothing, so a leave is reported 200 ms late with whether the video still plays:
+  Back to Tab keeps it playing (the close button pauses it), and such a leave on a hidden tab emits `activateRequest`.
 - **Memory Saver.** A page is discarded in the renderer (`pages.ts`): its history (scroll state included) is kept and
   its `<webview>` removed, which ends its page process; the UI gets `discarded`. Showing the tab, reload, a load or a
   history step builds a new element that gets the kept history through `navigationHistory.restore`, the path page
@@ -300,10 +316,19 @@ the main method where one is needed (`aroundMain` in `tsModules.ts`), the main p
 
 ## The main process
 
+- **Focus after dialogs.** Every dialog main opens goes through `systemDialogs.ts`; when one closes, or a focused app
+  window closes (`focusReturn.ts`), and no app window has focus 100 ms later, the parent or the most recently focused
+  window is focused again, which a window manager has already done. It does so only when nothing else has focus: on
+  X11 main asks the X server itself (`system/xFocus.ts`, a small X11 protocol client using the Xauthority cookie) for
+  `_NET_ACTIVE_WINDOW` under a window manager (None or an Ardia window) or the input focus without one (None,
+  PointerRoot, the root or an Ardia window), and leaves focus alone if it can't ask; on Wayland the compositor
+  already refuses focus stealing. Any Ardia window gaining focus cancels a pending return. A page's file input reports its `change` and
+  `cancel` events from a page script (`services/fileChooserFocus.ts`) for the same.
 - **Launch config.** `src/launch.ts` and `src/paths.ts` are the only files that read the environment (`ARDIA_DATA_DIR`,
   `ARDIA_BACKGROUND`, `ARDIA_REMOTE_DEBUGGING_PORT`, `ARDIA_INSTANCE`, `ARDIA_SWITCHES`, `ARDIA_TRACE`, `ARDIA_TEST`,
-  `ARDIA_FEEDBACK_URL`). A test instance is an `ARDIA_DATA_DIR` outside `~/.local/share/ardia` and `~/.config/ardia`;
-  only there do `ARDIA_TEST` and `ARDIA_TRACE` count. Linux adds the trace area `keys` (every key press, its
+  `ARDIA_FEEDBACK_URL`). A test instance is an `ARDIA_DATA_DIR` outside `~/.local/share/ardia`, `~/.config/ardia`,
+  `$XDG_DATA_HOME/ardia` and `$XDG_CONFIG_HOME/ardia` (compared as the nearest existing folder's real path plus the
+  part not made yet, so a symlink can't hide the live profile); only there do `ARDIA_TEST` and `ARDIA_TRACE` count. Linux adds the trace area `keys` (every key press, its
   webContents and window). The main process logs to stdout and `<data>/launch.log`.
 - **Documents.** `ArdiaDocuments` stages each write in memory (a read right after sees it) and lands it with an
   atomic replace (temp file, fsync, rename), one at a time, retrying with backoff; quitting flushes synchronously. The
@@ -325,6 +350,29 @@ the main method where one is needed (`aroundMain` in `tsModules.ts`), the main p
   `mimeapps.list` and the autostart entry go under `<data>/Desktop`, and no xdg tool runs.
 - **Updates** come from the GitHub releases of the repository the build was made from (`ARDIA_UPDATE_REPOSITORY` at
   build time): Ardia checks every 6 hours and offers the release page; it doesn't update itself yet.
+- **Device owner check.** Before showing saved passwords (the pane's Unlock), exporting them or showing the sync
+  recovery phrase, `ownerCheck.ts` asks for the login password in a small modal window (`ownerPrompt.ts`) and checks it
+  with PAM's `unix_chkpwd` (setgid `shadow`; it only checks the calling user's own password; exit 7 is a wrong
+  password, anything else a helper failure). The helper is used only from `/usr/sbin`, `/sbin`, `/usr/bin` or
+  `/run/wrappers/bin` (NixOS), and only when the file and every folder up to `/` are root-owned with no group or world
+  write bit (root's group included); with none, the check is denied and says so. One prompt at a time; a correct
+  password counts for 60 s. Locking the screen or suspending drops it: `system/screenLock.ts` hears the lock from
+  logind on the system bus (this process's session: `XDG_SESSION_ID`, else `GetSessionByPID`, else the user's
+  graphical session; its `Lock` signal or `LockedHint` turning true) and from `ActiveChanged(true)` of the freedesktop,
+  GNOME and Xfce screen savers on the session bus, besides Electron's `lock-screen`; it starts in the background and
+  gives up quietly on a bus that's missing or silent for 10 s. The same lock tells the app (`lockedOrAsleep`,
+  `screenLocked`). Going away bumps a generation: an open prompt closes and denies, an answer typed after it is wiped
+  unchecked, a check that finishes after it grants nothing, and Unlock and the recovery phrase drop a grant that
+  arrives late (`ownerPresence()`). Export checks again after its save dialog, before it opens a password, and asks
+  again if the dialog outlived the grant. Wrong passwords set a process-wide wait before the next try (0, 0, 2, 5,
+  30, then 60 s), which survives closing the prompt; passwords over 512 bytes or holding NUL never reach the helper. The
+  password crosses from the prompt as UTF-8 bytes, the field is cleared on submit, and main copies it once into a
+  NUL-terminated Buffer that is zeroed after the write and on every error. A successful Unlock also records a
+  five-minute unlock per profile in main, which `passwords.reveal` requires. Only a test instance can skip the prompt:
+  `ARDIA_TEST=reauth` (`denied` refuses) or a stub helper with `ARDIA_TEST=passwordHelper=<path>`, which skips the
+  ownership check; node tests drive the check with that stub and a scripted prompt (`src/testing/ownerCheck.ts`), and
+  the lock watch with a fake logind and screen savers on private `dbus-daemon`s (`src/testing/dbus.ts`); every test
+  process gets dead bus addresses otherwise.
 - **Secrets** (`ArdiaKeychain`, passwords, card numbers) are sealed with `safeStorage`: the desktop keyring through
   libsecret or KWallet, or, like Chrome with no keyring, the `basic_text` backend's fixed key (`v10` blobs;
   `src/secretStorage.ts` turns it on). Nothing is stored as plain base64. Each keychain secret records its backend, and
@@ -362,7 +410,29 @@ the main method where one is needed (`aroundMain` in `tsModules.ts`), the main p
 - **Requests.** Electron keeps one `webRequest` listener per event per session, so filters go through
   `services/requests.ts` (`onBeforeRequest`, `onHeadersReceived`), never the session directly.
 - **Content blocker.** `@ghostery/adblocker`'s engine with uBlock Origin's default lists, cached and serialized under
-  `<data>/ContentBlocker`.
+  `<data>/ContentBlocker`. Element hiding asks the engine with the page's hostname and its registrable domain (none for
+  an IP address, which the engine handles); EasyList's `$generichide` exceptions switch generic hiding off on
+  localhost, 127.0.0.1 and LAN addresses.
+- **Translate.** `ArdiaTranslate` (`modules/translate.ts`, `src/translate`) answers the Mac module the shared
+  `state/site/translate.ts` drives. Bergamot, Firefox's engine (the browsermt WASM build), runs in a worker thread
+  (`out/translateWorker.js` with `out/bergamot/`, unpacked from the asar), reads model files from disk and pivots through
+  English for pairs without a direct model; it exits after a minute idle. Main holds the queue and sends the worker
+  one request at a time, with the models it needs (the worker keeps four loaded). Page text is untrusted, so main caps
+  it (`translationLimits` in `translate/engine.ts`): a passage over 64 KiB comes back untranslated, a request over 64
+  passages or 64 KiB is refused, a page (owner) can have 8 requests waiting, each request has a deadline of 20 s plus
+  1.5 s per KiB after which the worker is terminated and a fresh one takes the queue, and cancelling an owner drops its
+  queued requests and terminates the worker if its request is running. Direct `translate` calls share the caps;
+  detection reads the first 4096 characters. French Wikipedia's longest articles have passages of at most 4.1 KB. Models are Mozilla's released Firefox models
+  from its public registry (`storage.googleapis.com/moz-fx-translations-data--303e-prod-translations-data/db/models.json`,
+  cached for a week in `<data>/Translations/catalog.json`), downloaded gzipped per pair on first use into
+  `<data>/Translations/<from>-<to>`: each file is one stream pipeline (response, gunzip, size limit, staging file),
+  hashed as written and checked against the registry's hash before the rename; the files of a pair share an abort
+  signal, so the first failure stops the others and the pair's lock holds until all have settled. The manifest keeps
+  each file's hash, and cached files are checked against it once per launch; until then the offered languages
+  come from a built-in list of released pairs and nothing is fetched. Firefox's Remote Settings CDN answers Chrome user
+  agents with 406, so it isn't used. A passage of several text nodes goes out as HTML, one `<span data-p>` per node,
+  and comes back mapped to the nodes in page order (`translate/pieces.ts`). CLD3 (`cld3-asm`) detects the language.
+  `onDownload` events drive the progress toast (`platform/translationDownloads.linux.ts`).
 - **Extensions.** `session.extensions` plus `electron-chrome-extensions` (chrome.tabs, chrome.action, …) and
   `electron-chrome-web-store` (the Web Store's install button). Their preloads are embedded in the bundle and written
   out at startup as the packaged app's fallback; the libraries are `require`d so their CommonJS builds resolve their
@@ -391,9 +461,10 @@ the main method where one is needed (`aroundMain` in `tsModules.ts`), the main p
   build sealed with the basic key is deleted at launch), sync reads as locked at the next launch and the pane asks for
   the recovery phrase, saying why (`keyPersists()`). The
   default folder is `Ardia Sync` in the first of `~/Dropbox`, `~/Nextcloud`, `~/OneDrive`, `~/Sync`, … that exists
-  (the instance's `syncFolder` in a test instance). The Recovery Kit is the Windows TypeScript (PDF, text, QR code);
-  its preview is the same layout as SVG; "Copy" puts the PDF on the clipboard as a file (`text/uri-list`). There's no
-  device owner check before showing the words yet (`ARDIA_TEST=reauth=denied` refuses, for tests).
+  (the instance's `syncFolder` in a test instance); with none of them, `folderInfo` reports no folder (an empty path)
+  until one is chosen, so the pane asks for one, as the Mac does with iCloud Drive off. The Recovery Kit is the Windows TypeScript (PDF, text, QR code);
+  its preview is the same layout as SVG; "Copy" puts the PDF on the clipboard as a file (`text/uri-list`). The words
+  show only after the login password check (`ownerCheck.ts`, under The main process; `ARDIA_TEST=reauth=denied` refuses, for tests).
   `node --test apps/browser/linux/src/services/sync/sync.test.ts` opens the Mac and Windows fixture vaults, matches
   their password seals byte for byte and checks what Linux writes with an independent WebCrypto implementation.
 - **Import.** `ArdiaImport` runs the Windows readers in main with a Node host: Chrome, Chromium, Brave, Edge, Vivaldi,
